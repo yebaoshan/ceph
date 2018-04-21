@@ -70,6 +70,7 @@ int crush_find_rule(const struct crush_map *map, int ruleset, int type, int size
  * Since this is expensive, we optimize for the r=0 case, which
  * captures the vast majority of calls.
  */
+// 随机选择
 static int bucket_perm_choose(const struct crush_bucket *bucket,
 			      struct crush_work_bucket *work,
 			      int x, int r)
@@ -152,7 +153,11 @@ static int bucket_list_choose(const struct crush_bucket_list *bucket,
 			i, x, r, bucket->h.items[i], bucket->item_weights[i],
 			bucket->sum_weights[i], w);
 		w *= bucket->sum_weights[i];
-		w = w >> 16;
+	    // item_weights为各个子设备的权重
+	    // sum_weights为从最开始的子设备到当前子设备权重之和
+	    // ??? 为何 *sum 再取余2的16次方，再比较，没有理解 ???
+        // ??? 与ceph源码解析介绍有不同 (由hash得到v[0~1]值, v < [0 ~ Wh/Ws])
+    	w = w >> 16;
 		/*dprintk(" scaled %llx\n", w);*/
 		if (w < bucket->item_weights[i]) {
 			return bucket->h.items[i];
@@ -199,13 +204,22 @@ static int bucket_tree_choose(const struct crush_bucket_tree *bucket,
 	__u32 w;
 	__u64 t;
 
+    /*          8
+     *      4
+     *   2      6      10
+     *  1 3    5 7    9  11
+     * */
 	/* start at root */
 	n = bucket->num_nodes >> 1;
 
-	while (!terminal(n)) {
+	// 是否到叶子节点
+    while (!terminal(n)) {
 		int l;
 		/* pick point in [0, w) */
-		w = bucket->node_weights[n];
+	    // node_weights为当前节点权重，为其左右子树权重之和
+	    // ??? 为何 * node_weights 再取余2的32次方，再比较，没有理解 ???
+        // ??? 与ceph源码解析介绍有不同 (由hash得到v[0~1]值, v < [0 ~ Wl/Wn])
+        w = bucket->node_weights[n];
 		t = (__u64)crush_hash32_4(bucket->h.hash, x, n, r,
 					  bucket->h.id) * (__u64)w;
 		t = t >> 32;
@@ -234,9 +248,11 @@ static int bucket_straw_choose(const struct crush_bucket_straw *bucket,
 
 	for (i = 0; i < bucket->h.size; i++) {
 		draw = crush_hash32_3(bucket->h.hash, x, bucket->h.items[i], r);
-		draw &= 0xffff;
+		// 取低16位， 再乘权重修正值
+        draw &= 0xffff;
 		draw *= bucket->straws[i];
-		if (i == 0 || draw > high_draw) {
+		// 取draw最大的item
+        if (i == 0 || draw > high_draw) {
 			high = i;
 			high_draw = draw;
 		}
@@ -294,9 +310,9 @@ static __u64 crush_ln(unsigned int xin)
  * straw2
  *
  * Suppose we have two osds: osd.0 and osd.1, with weight 8 and 4 respectively, It means:
- *   a). For osd.0, the time interval between each io request apply to exponential distribution 
+ *   a). For osd.0, the time interval between each io request apply to exponential distribution
  *       with lamba equals 8
- *   b). For osd.1, the time interval between each io request apply to exponential distribution 
+ *   b). For osd.1, the time interval between each io request apply to exponential distribution
  *       with lamba equals 4
  *   c). If we apply to each osd's exponential random variable, then the total pgs on each osd
  *       is proportional to its weight.
@@ -328,10 +344,10 @@ static inline __s32 *get_choose_arg_ids(const struct crush_bucket_straw2 *bucket
 /*
  * Compute exponential random variable using inversion method.
  *
- * for reference, see the exponential distribution example at:  
+ * for reference, see the exponential distribution example at:
  * https://en.wikipedia.org/wiki/Inverse_transform_sampling#Examples
  */
-static inline __s64 generate_exponential_distribution(int type, int x, int y, int z, 
+static inline __s64 generate_exponential_distribution(int type, int x, int y, int z,
                                                       int weight)
 {
 	unsigned int u = crush_hash32_3(type, x, y, z);
@@ -509,7 +525,8 @@ parent_r %d stable %d\n",
 				retry_bucket = 0;
 				r = rep + parent_r;
 				/* r' = r + f_total */
-				r += ftotal;
+			    // 出现冲突、失效、过载时,ftotal会递增，所以r值改变，之后的hash函数值也就改变
+            	r += ftotal;
 
 				/* bucket choose */
 				if (in->size == 0) {
@@ -523,13 +540,15 @@ parent_r %d stable %d\n",
 						in, work->work[-1-in->id],
 						x, r);
 				else
-					item = crush_bucket_choose(
+					// 根据不同算法从in指向的backet中选择一个子设备item
+                    item = crush_bucket_choose(
 						in, work->work[-1-in->id],
 						x, r,
                                                 (choose_args ? &choose_args[-1-in->id] : 0),
                                                 outpos);
 				if (item >= map->max_devices) {
-					dprintk("   bad item %d\n", item);
+					// 无效的子设备
+                    dprintk("   bad item %d\n", item);
 					skip_rep = 1;
 					break;
 				}
@@ -542,20 +561,24 @@ parent_r %d stable %d\n",
 				dprintk("  item %d type %d\n", item, itemtype);
 
 				/* keep going? */
-				if (itemtype != type) {
+				// 选择的设备类型与需要的类型不符合
+                if (itemtype != type) {
 					if (item >= 0 ||
 					    (-1-item) >= map->max_buckets) {
-						dprintk("   bad item type %d\n", type);
+						// 无效的子设备
+                        dprintk("   bad item type %d\n", type);
 						skip_rep = 1;
 						break;
 					}
-					in = map->buckets[-1-item];
+					// 深度优先, 继续搜索
+                    in = map->buckets[-1-item];
 					retry_bucket = 1;
 					continue;
 				}
 
 				/* collision? */
-				for (i = 0; i < outpos; i++) {
+				// 冲突,即之前已经选择过
+                for (i = 0; i < outpos; i++) {
 					if (out[i] == item) {
 						collide = 1;
 						break;
@@ -563,14 +586,17 @@ parent_r %d stable %d\n",
 				}
 
 				reject = 0;
+                // 需要选择叶子设备
 				if (!collide && recurse_to_leaf) {
-					if (item < 0) {
+					// 不是叶子节点
+                    if (item < 0) {
 						int sub_r;
 						if (vary_r)
 							sub_r = r >> (vary_r-1);
 						else
 							sub_r = 0;
-						if (crush_choose_firstn(
+						// type为0,选择叶子节点,输出使用out2
+                        if (crush_choose_firstn(
 							    map,
 							    work,
 							    map->buckets[-1-item],
@@ -590,6 +616,7 @@ parent_r %d stable %d\n",
 							reject = 1;
 					} else {
 						/* we already have a leaf! */
+					    // 已经是叶子节点，设备的id为正
 						out2[outpos] = item;
 		                        }
 				}
@@ -597,7 +624,8 @@ parent_r %d stable %d\n",
 				if (!reject && !collide) {
 					/* out? */
 					if (itemtype == 0)
-						reject = is_out(map, weight,
+						// 失效或过载
+                        reject = is_out(map, weight,
 								weight_max,
 								item, x);
 				}
@@ -606,7 +634,6 @@ reject:
 				if (reject || collide) {
 					ftotal++;
 					flocal++;
-
 					if (collide && flocal <= local_retries)
 						/* retry locally a few times */
 						retry_bucket = 1;
@@ -626,6 +653,7 @@ reject:
 						flocal);
 				}
 			} while (retry_bucket);
+        // 从最初的bucket
 		} while (retry_descent);
 
 		if (skip_rep) {
@@ -633,6 +661,7 @@ reject:
 			continue;
 		}
 
+        // 正确获取到
 		dprintk("CHOOSE got %d\n", item);
 		out[outpos] = item;
 		outpos++;
@@ -893,7 +922,7 @@ void crush_init_workspace(const struct crush_map *m, void *v) {
  * @x: hash input
  * @result: pointer to result vector
  * @result_max: maximum result size
- * @weight: weight vector (for map leaves)
+ * @weight: weight vector (for map leaves) 所有osd的权重，据此判断osd是否out
  * @weight_max: size of weight vector
  * @cwin: Pointer to at least map->working_size bytes of memory or NULL.
  */
@@ -904,6 +933,9 @@ int crush_do_rule(const struct crush_map *map,
 {
 	int result_len;
 	struct crush_work *cw = cwin;
+    // a用于存放step的最终结果，
+    // b用于存放crush_choose_firstn的逻辑结果，
+    // c用于crush_choose_firstn递归调用逻辑。
 	int *a = (int *)((char *)cw + map->working_size);
 	int *b = a + result_max;
 	int *c = b + result_max;
@@ -948,7 +980,8 @@ int crush_do_rule(const struct crush_map *map,
 
 		switch (curstep->op) {
 		case CRUSH_RULE_TAKE:
-			if ((curstep->arg1 >= 0 &&
+			// bucket id 为负数
+            if ((curstep->arg1 >= 0 &&
 			     curstep->arg1 < map->max_devices) ||
 			    (-1-curstep->arg1 >= 0 &&
 			     -1-curstep->arg1 < map->max_buckets &&
@@ -1010,7 +1043,8 @@ int crush_do_rule(const struct crush_map *map,
 
 			for (i = 0; i < wsize; i++) {
 				int bno;
-				numrep = curstep->arg1;
+                // 选择个数
+                numrep = curstep->arg1;
 				if (numrep <= 0) {
 					numrep += result_max;
 					if (numrep <= 0)
@@ -1033,7 +1067,8 @@ int crush_do_rule(const struct crush_map *map,
 						recurse_tries = 1;
 					else
 						recurse_tries = choose_tries;
-					osize += crush_choose_firstn(
+					// 在某个buckets中选择numrep个指定类型(curstep->arg2)的设备
+                    osize += crush_choose_firstn(
 						map,
 						cw,
 						map->buckets[bno],
@@ -1079,7 +1114,8 @@ int crush_do_rule(const struct crush_map *map,
 				memcpy(o, c, osize*sizeof(*o));
 
 			/* swap o and w arrays */
-			tmp = o;
+			// 仅交换指针
+            tmp = o;
 			o = w;
 			w = tmp;
 			wsize = osize;

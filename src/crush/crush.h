@@ -42,9 +42,9 @@
  * to generate the set of output devices.
  */
 struct crush_rule_step {
-	__u32 op;
-	__s32 arg1;
-	__s32 arg2;
+	__u32 op;     // step 操作步的操作码
+	__s32 arg1;   // 如果是take，参数就是选择的bucket的id号;如果是select，则是选择的数量
+	__s32 arg2;   // 如果是select，则是选择的类型
 };
 
 /** @ingroup API
@@ -235,6 +235,7 @@ struct crush_bucket {
 	/*! @endcond */
 	__u32 weight;    /*!< 16.16 fixed point cumulated children weight */
 	__u32 size;      /*!< size of the __items__ array */
+    // 仅仅保存buckets数组对于的下标
         __s32 *items;    /*!< array of children: < 0 are buckets, >= 0 items */
 };
 
@@ -313,8 +314,10 @@ struct crush_bucket_uniform {
  */
 struct crush_bucket_list {
         struct crush_bucket h; /*!< generic bucket information */
-	__u32 *item_weights;  /*!< 16.16 fixed point weight for each item */
-	__u32 *sum_weights;   /*!< 16.16 fixed point sum of the weights */
+	// 各个子设备的权重
+    __u32 *item_weights;  /*!< 16.16 fixed point weight for each item */
+	// 从最开始的子设备到当前子设备权重之和
+    __u32 *sum_weights;   /*!< 16.16 fixed point sum of the weights */
 };
 
 struct crush_bucket_tree {
@@ -536,9 +539,13 @@ static inline const char *crush_alg_name(int alg)
    immutable within the mapper and removes the requirement for a CRUSH
    map lock. */
 
+// 随机排序选择算法的一些cache参数
 struct crush_work_bucket {
+    // 要选择的x
 	__u32 perm_x; /* @x for which *perm is defined */
-	__u32 perm_n; /* num elements of *perm that are permuted/defined */
+	// 排序的总的元素
+    __u32 perm_n; /* num elements of *perm that are permuted/defined */
+    // 排序组合的结果
 	__u32 *perm;  /* Permutation of the bucket's items */
 };
 
