@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_WORKQUEUE_H
@@ -41,9 +41,9 @@ public:
   class TPHandle {
     friend class ThreadPool;
     CephContext *cct;
-    heartbeat_handle_d *hb;
-    ceph::coarse_mono_clock::rep grace;
-    ceph::coarse_mono_clock::rep suicide_grace;
+    heartbeat_handle_d *hb;                     // 心跳
+    ceph::coarse_mono_clock::rep grace;         // 超时
+    ceph::coarse_mono_clock::rep suicide_grace; // 自杀超时时间
   public:
     TPHandle(
       CephContext *cct,
@@ -264,7 +264,7 @@ public:
   template<class T>
   class WorkQueue : public WorkQueue_ {
     ThreadPool *pool;
-    
+
     /// Add a work item to the queue.
     virtual bool _enqueue(T *) = 0;
     /// Dequeue a previously submitted work item.
@@ -291,12 +291,14 @@ public:
   public:
     WorkQueue(string n, time_t ti, time_t sti, ThreadPool* p)
       : WorkQueue_(std::move(n), ti, sti), pool(p) {
+      // 加入到线程池中
       pool->add_work_queue(this);
     }
     ~WorkQueue() override {
       pool->remove_work_queue(this);
     }
-    
+
+    // 加入队列，触发条件变量
     bool queue(T *item) {
       pool->_lock.Lock();
       bool r = _enqueue(item);
@@ -437,19 +439,20 @@ public:
 private:
   vector<WorkQueue_*> work_queues;
   int next_work_queue = 0;
- 
+
 
   // threads
   struct WorkThread : public Thread {
     ThreadPool *pool;
     // cppcheck-suppress noExplicitConstructor
     WorkThread(ThreadPool *p) : pool(p) {}
+    // entry会在Thread中调用
     void *entry() override {
       pool->worker(this);
       return 0;
     }
   };
-  
+
   set<WorkThread*> _threads;
   list<WorkThread*> _old_threads;  ///< need to be joined
   int processing;
@@ -467,7 +470,7 @@ public:
     Mutex::Locker l(_lock);
     return _num_threads;
   }
-  
+
   /// assign a work queue to this thread pool
   void add_work_queue(WorkQueue_* wq) {
     Mutex::Locker l(_lock);
@@ -479,7 +482,7 @@ public:
     unsigned i = 0;
     while (work_queues[i] != wq)
       i++;
-    for (i++; i < work_queues.size(); i++) 
+    for (i++; i < work_queues.size(); i++)
       work_queues[i-1] = work_queues[i];
     assert(i == work_queues.size());
     work_queues.resize(i-1);
@@ -539,7 +542,7 @@ public:
   GenContextWQ(const string &name, time_t ti, ThreadPool *tp)
     : ThreadPool::WorkQueueVal<
       GenContext<ThreadPool::TPHandle&>*>(name, ti, ti*10, tp) {}
-  
+
   void _enqueue(GenContext<ThreadPool::TPHandle&> *c) override {
     _queue.push_back(c);
   }
@@ -615,6 +618,7 @@ private:
   ceph::unordered_map<Context*, int> m_context_results;
 };
 
+// 每个线程一个队列，所有需要顺序执行的任务放在同一个线程的队列中
 class ShardedThreadPool {
 
   CephContext *cct;
@@ -636,7 +640,7 @@ class ShardedThreadPool {
 public:
 
   class BaseShardedWQ {
-  
+
   public:
     time_t timeout_interval, suicide_interval;
     BaseShardedWQ(time_t ti, time_t sti):timeout_interval(ti), suicide_interval(sti) {}
@@ -646,11 +650,11 @@ public:
     virtual void return_waiting_threads() = 0;
     virtual void stop_return_waiting_threads() = 0;
     virtual bool is_shard_empty(uint32_t thread_index) = 0;
-  };      
+  };
 
   template <typename T>
   class ShardedWQ: public BaseShardedWQ {
-  
+
     ShardedThreadPool* sharded_pool;
 
   protected:
@@ -659,7 +663,7 @@ public:
 
 
   public:
-    ShardedWQ(time_t ti, time_t sti, ShardedThreadPool* tp): BaseShardedWQ(ti, sti), 
+    ShardedWQ(time_t ti, time_t sti, ShardedThreadPool* tp): BaseShardedWQ(ti, sti),
                                                                  sharded_pool(tp) {
       tp->set_wq(this);
     }
@@ -674,7 +678,7 @@ public:
     void drain() {
       sharded_pool->drain();
     }
-    
+
   };
 
 private:
@@ -683,7 +687,7 @@ private:
   // threads
   struct WorkThreadSharded : public Thread {
     ShardedThreadPool *pool;
-    uint32_t thread_index;
+    uint32_t thread_index; // 表示对应的线程
     WorkThreadSharded(ShardedThreadPool *p, uint32_t pthread_index): pool(p),
       thread_index(pthread_index) {}
     void *entry() override {

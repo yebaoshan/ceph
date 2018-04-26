@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <atomic>
@@ -576,7 +576,7 @@ public:
 	      << bendl;
 	throw error_code(r);
       }
-      auto sg = make_scope_guard([=] { close_pipe(tmpfd); });	  
+      auto sg = make_scope_guard([=] { close_pipe(tmpfd); });	
       r = set_nonblocking(tmpfd);
       if (r < 0) {
 	bdout << "raw_pipe: error setting nonblocking flag on temp pipe: "
@@ -881,7 +881,7 @@ public:
       p._raw->nref++;
       bdout << "ptr " << this << " get " << _raw << bendl;
     }
-    buffer::raw *raw = p._raw; 
+    buffer::raw *raw = p._raw;
     release();
     if (raw) {
       _raw = raw;
@@ -1474,7 +1474,7 @@ public:
     while (len > 0) {
       if (p == ls->end())
 	throw end_of_buffer();
-      
+
       unsigned howmuch = p->length() - p_off;
       if (len < howmuch)
 	howmuch = len;
@@ -1485,7 +1485,7 @@ public:
       advance(howmuch);
     }
   }
-  
+
   void buffer::list::iterator::copy_in(unsigned len, const list& otherl)
   {
     if (p == ls->end())
@@ -1597,7 +1597,7 @@ public:
   {
     for (std::list<ptr>::const_iterator it = _buffers.begin();
 	 it != _buffers.end();
-	 ++it) 
+	 ++it)
       if (!it->is_aligned(align))
 	return false;
     return true;
@@ -1607,7 +1607,7 @@ public:
   {
     for (std::list<ptr>::const_iterator it = _buffers.begin();
 	 it != _buffers.end();
-	 ++it) 
+	 ++it)
       if (!it->is_n_align_sized(align))
 	return false;
     return true;
@@ -1754,7 +1754,7 @@ public:
   {
     return rebuild_aligned_size_and_memory(align, align);
   }
-  
+
   bool buffer::list::rebuild_aligned_size_and_memory(unsigned align_size,
 						    unsigned align_memory,
 						    unsigned max_buffers)
@@ -1777,7 +1777,7 @@ public:
         ++p;
         continue;
       }
-      
+
       // consolidate unaligned items, until we get something that is sized+aligned
       list unaligned;
       unsigned offset = 0;
@@ -1806,7 +1806,7 @@ public:
 
     return  (old_memcopy_count != _memcopy_count);
   }
-  
+
   bool buffer::list::rebuild_page_aligned()
   {
    return  rebuild_aligned(CEPH_PAGE_SIZE);
@@ -1853,7 +1853,7 @@ public:
   {
     if (off + len > length())
       throw end_of_buffer();
-    if (last_p.get_off() != off) 
+    if (last_p.get_off() != off)
       last_p.seek(off);
     last_p.copy(len, dest);
   }
@@ -1862,18 +1862,18 @@ public:
   {
     if (off + len > length())
       throw end_of_buffer();
-    if (last_p.get_off() != off) 
+    if (last_p.get_off() != off)
       last_p.seek(off);
     last_p.copy(len, dest);
   }
 
   void buffer::list::copy(unsigned off, unsigned len, std::string& dest) const
   {
-    if (last_p.get_off() != off) 
+    if (last_p.get_off() != off)
       last_p.seek(off);
     return last_p.copy(len, dest);
   }
-    
+
   void buffer::list::copy_in(unsigned off, unsigned len, const char *src)
   {
     copy_in(off, len, src, true);
@@ -1883,15 +1883,15 @@ public:
   {
     if (off + len > length())
       throw end_of_buffer();
-    
-    if (last_p.get_off() != off) 
+
+    if (last_p.get_off() != off)
       last_p.seek(off);
     last_p.copy_in(len, src, crc_reset);
   }
 
   void buffer::list::copy_in(unsigned off, unsigned len, const list& src)
   {
-    if (last_p.get_off() != off) 
+    if (last_p.get_off() != off)
       last_p.seek(off);
     last_p.copy_in(len, src);
   }
@@ -1902,6 +1902,7 @@ public:
     unsigned gap = append_buffer.unused_tail_length();
     if (!gap) {
       // make a new append_buffer!
+      // ??? append_buffer 为ptr, create生成为raw, 保证ptr无virtual,且第一变量是raw ???
       append_buffer = raw_combined::create(CEPH_BUFFER_APPEND_SIZE, 0,
 					   get_mempool());
       append_buffer.set_length(0);   // unused, so far.
@@ -1924,7 +1925,7 @@ public:
       }
       if (len == 0)
         break;  // done!
-      
+
       // make a new append_buffer.  fill out a complete page, factoring in the
       // raw_combined overhead.
       size_t need = round_up_to(len, sizeof(size_t)) + sizeof(raw_combined);
@@ -1969,7 +1970,7 @@ public:
     _len += bl._len;
     for (std::list<ptr>::const_iterator p = bl._buffers.begin();
 	 p != bl._buffers.end();
-	 ++p) 
+	 ++p)
       _buffers.push_back(*p);
   }
 
@@ -1991,7 +1992,7 @@ public:
     _len += len;
     _buffers.emplace_front(std::move(bp));
   }
-  
+
   void buffer::list::append_zero(unsigned len)
   {
     ptr bp(len);
@@ -1999,7 +2000,7 @@ public:
     append(std::move(bp));
   }
 
-  
+
   /*
    * get a char
    */
@@ -2007,7 +2008,7 @@ public:
   {
     if (n >= _len)
       throw end_of_buffer();
-    
+
     for (std::list<ptr>::const_iterator p = _buffers.begin();
 	 p != _buffers.end();
 	 ++p) {
@@ -2108,7 +2109,7 @@ public:
       ++curbuf;
     }
     assert(len == 0 || curbuf != other._buffers.end());
-    
+
     while (len > 0) {
       // partial?
       if (off + len < curbuf->length()) {
@@ -2117,7 +2118,7 @@ public:
 	_len += len;
 	break;
       }
-      
+
       // through end
       //cout << "copying end (all?) of " << *curbuf << std::endl;
       unsigned howmuch = curbuf->length() - off;
@@ -2140,7 +2141,7 @@ public:
 
     assert(len > 0);
     //cout << "splice off " << off << " len " << len << " ... mylen = " << length() << std::endl;
-      
+
     // skip off
     std::list<ptr>::iterator curbuf = _buffers.begin();
     while (off > 0) {
@@ -2156,7 +2157,7 @@ public:
 	break;
       }
     }
-    
+
     if (off) {
       // add a reference to the front bit
       //  insert it before curbuf (which we'll hose)
@@ -2164,12 +2165,12 @@ public:
       _buffers.insert( curbuf, ptr( *curbuf, 0, off ) );
       _len += off;
     }
-    
+
     while (len > 0) {
       // partial?
       if (off + len < (*curbuf).length()) {
 	//cout << "keeping end of " << *curbuf << ", losing first " << off+len << std::endl;
-	if (claim_by) 
+	if (claim_by)
 	  claim_by->append( *curbuf, off, len );
 	(*curbuf).set_offset( off+len + (*curbuf).offset() );    // ignore beginning big
 	(*curbuf).set_length( (*curbuf).length() - (len+off) );
@@ -2177,20 +2178,20 @@ public:
 	//cout << " now " << *curbuf << std::endl;
 	break;
       }
-      
+
       // hose though the end
       unsigned howmuch = (*curbuf).length() - off;
       //cout << "discarding " << howmuch << " of " << *curbuf << std::endl;
-      if (claim_by) 
+      if (claim_by)
 	claim_by->append( *curbuf, off, howmuch );
       _len -= (*curbuf).length();
       _buffers.erase( curbuf++ );
       len -= howmuch;
       off = 0;
     }
-      
+
     // splice in *replace (implement me later?)
-    
+
     last_p = begin();  // just in case we were in the removed region.
   }
 
@@ -2198,8 +2199,8 @@ public:
   {
     list s;
     s.substr_of(*this, off, len);
-    for (std::list<ptr>::const_iterator it = s._buffers.begin(); 
-	 it != s._buffers.end(); 
+    for (std::list<ptr>::const_iterator it = s._buffers.begin();
+	 it != s._buffers.end();
 	 ++it)
       if (it->length())
 	out.write(it->c_str(), it->length());
@@ -2212,7 +2213,7 @@ public:
       len -= l;
       }*/
   }
-  
+
 void buffer::list::encode_base64(buffer::list& o)
 {
   bufferptr bp(length() * 4 / 3 + 3);
@@ -2236,7 +2237,7 @@ void buffer::list::decode_base64(buffer::list& e)
   push_back(std::move(bp));
 }
 
-  
+
 
 int buffer::list::read_file(const char *fn, std::string *error)
 {
@@ -2614,7 +2615,7 @@ void buffer::list::hexdump(std::ostream &out, bool trailing_newline) const
 	out << ' ';
       out << "   ";
     }
-    
+
     out << "  |";
     for (i=0; i<per && o+i<length(); i++) {
       char c = (*this)[o+i];

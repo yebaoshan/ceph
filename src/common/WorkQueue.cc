@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include "WorkQueue.h"
@@ -85,15 +85,18 @@ void ThreadPool::worker(WorkThread *wt)
 {
   _lock.Lock();
   ldout(cct,10) << "worker start" << dendl;
-  
+
   std::stringstream ss;
   ss << name << " thread " << (void *)pthread_self();
+  // 添加到hb到HeartbeartMap的系统链表中保存。OSD会有一个定时器，定时检测是否超时
+  // 超过hb中设置的自杀时间，OSD会产生断言而导致自杀
   heartbeat_handle_d *hb = cct->get_heartbeat_map()->add_worker(ss.str(), pthread_self());
 
   while (!_stop) {
 
     // manage dynamic thread pool
     join_old_threads();
+    // 线程太多，把单曲线程从线程集合中删除,加入到_old_threads
     if (_threads.size() > _num_threads) {
       ldout(cct,1) << " worker shutting down; too many threads (" << _threads.size() << " > " << _num_threads << ")" << dendl;
       _threads.erase(wt);
@@ -105,34 +108,41 @@ void ThreadPool::worker(WorkThread *wt)
       WorkQueue_* wq;
       int tries = work_queues.size();
       bool did = false;
+      // 获取每一个工作队列,不为空，就取出，调用其处理函数做处理	
       while (tries--) {
 	next_work_queue %= work_queues.size();
 	wq = work_queues[next_work_queue++];
-	
+
 	void *item = wq->_void_dequeue();
 	if (item) {
 	  processing++;
 	  ldout(cct,12) << "worker wq " << wq->name << " start processing " << item
 			<< " (" << processing << " active)" << dendl;
 	  TPHandle tp_handle(cct, hb, wq->timeout_interval, wq->suicide_interval);
-	  tp_handle.reset_tp_timeout();
+	  // 将超时时间设置到hb中
+          tp_handle.reset_tp_timeout();
 	  _lock.Unlock();
-	  wq->_void_process(item, tp_handle);
+	  // 每个线程都有机会处理任意一个任务
+          wq->_void_process(item, tp_handle);
 	  _lock.Lock();
 	  wq->_void_process_finish(item);
 	  processing--;
 	  ldout(cct,15) << "worker wq " << wq->name << " done processing " << item
 			<< " (" << processing << " active)" << dendl;
-	  if (_pause || _draining)
+	  // 暂停时，工作队列正在处理，则等处理完后，触发暂停等待的条件变量
+          if (_pause || _draining)
 	    _wait_cond.Signal();
 	  did = true;
 	  break;
 	}
       }
+      // 处理完后，继续从最外层循环开始检测调用下一个工作队列，
+      //??? 应该是处理时间长短不确定，需要重新检测
       if (did)
 	continue;
     }
 
+    // 如果没有工作队列可处理，则重置心跳超时时间，并通过条件变量等待工作队列加入
     ldout(cct,20) << "worker waiting" << dendl;
     cct->get_heartbeat_map()->reset_timeout(
       hb,
@@ -152,6 +162,7 @@ void ThreadPool::worker(WorkThread *wt)
 void ThreadPool::start_threads()
 {
   assert(_lock.is_locked());
+  // 创建工作线程
   while (_threads.size() < _num_threads) {
     WorkThread *wt = new WorkThread(this);
     ldout(cct, 10) << "start_threads creating and starting " << wt << dendl;
@@ -216,7 +227,7 @@ void ThreadPool::stop(bool clear_after)
   for (unsigned i=0; i<work_queues.size(); i++)
     work_queues[i]->_clear();
   _stop = false;
-  _lock.Unlock();    
+  _lock.Unlock();
   ldout(cct,15) << "stopped" << dendl;
 }
 
@@ -268,7 +279,7 @@ void ThreadPool::set_ioprio(int cls, int priority)
   for (set<WorkThread*>::iterator p = _threads.begin();
        p != _threads.end();
        ++p) {
-    ldout(cct,10) << __func__ 
+    ldout(cct,10) << __func__
 		  << " class " << cls << " priority " << priority
 		  << " pid " << (*p)->get_pid()
 		  << dendl;
@@ -300,6 +311,7 @@ void ShardedThreadPool::shardedthreadpool_worker(uint32_t thread_index)
   heartbeat_handle_d *hb = cct->get_heartbeat_map()->add_worker(ss.str(), pthread_self());
 
   while (!stop_threads) {
+    // 如果设置了暂停，需要等所有线程都暂停后，才返回
     if (pause_threads) {
       shardedpool_lock.Lock();
       ++num_paused;
@@ -336,6 +348,7 @@ void ShardedThreadPool::shardedthreadpool_worker(uint32_t thread_index)
     cct->get_heartbeat_map()->reset_timeout(
       hb,
       wq->timeout_interval, wq->suicide_interval);
+    // 执行人物，携带thread_index
     wq->_process(thread_index, hb);
 
   }
@@ -397,7 +410,7 @@ void ShardedThreadPool::pause()
     wait_cond.Wait(shardedpool_lock);
   }
   shardedpool_lock.Unlock();
-  ldout(cct,10) << "paused" << dendl; 
+  ldout(cct,10) << "paused" << dendl;
 }
 
 void ShardedThreadPool::pause_new()
