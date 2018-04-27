@@ -91,7 +91,9 @@ bool Throttle::_wait(int64_t c, UNIQUE_LOCK_T(lock)& l)
   bool waited = false;
   if (_should_wait(c) || !conds.empty()) { // always wait behind other waiters.
     {
+      // 加入conds
       auto cv = conds.emplace(conds.end());
+      // 离开作用域时，从conds删除
       auto w = make_scope_guard([this, cv]() {
 	  conds.erase(cv);
 	});

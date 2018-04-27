@@ -35,8 +35,8 @@ class SafeTimer
   void timer_thread();
   void _shutdown();
 
-  std::multimap<utime_t, Context*> schedule;
-  std::map<Context*, std::multimap<utime_t, Context*>::iterator> events;
+  std::multimap<utime_t, Context*> schedule; // 目标时间和定时任务执行函数
+  std::map<Context*, std::multimap<utime_t, Context*>::iterator> events; // 定时任务与定时任务在schedule中的位置映射
   bool stopping;
 
   void dump(const char *caller = 0) const;

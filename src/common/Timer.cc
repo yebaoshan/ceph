@@ -86,12 +86,12 @@ void SafeTimer::timer_thread()
       // is the future now?
       if (p->first > now)
 	break;
-
+      // 时间到，执行任务
       Context *callback = p->second;
       events.erase(callback);
       schedule.erase(p);
       ldout(cct,10) << "timer_thread executing " << callback << dendl;
-      
+
       if (!safe_callbacks)
 	lock.Unlock();
       callback->complete(0);
@@ -143,6 +143,7 @@ Context* SafeTimer::add_event_at(utime_t when, Context *callback)
 
   /* If the event we have just inserted comes before everything else, we need to
    * adjust our timeout. */
+  // 刚插入的元素在map的开头，意味着其时间最小，所以需要修改定时时间
   if (i == schedule.begin())
     cond.Signal();
   return callback;
@@ -151,7 +152,7 @@ Context* SafeTimer::add_event_at(utime_t when, Context *callback)
 bool SafeTimer::cancel_event(Context *callback)
 {
   assert(lock.is_locked());
-  
+
   auto p = events.find(callback);
   if (p == events.end()) {
     ldout(cct,10) << "cancel_event " << callback << " not found" << dendl;
@@ -170,7 +171,7 @@ void SafeTimer::cancel_all_events()
 {
   ldout(cct,10) << "cancel_all_events" << dendl;
   assert(lock.is_locked());
-  
+
   while (!events.empty()) {
     auto p = events.begin();
     ldout(cct,10) << " cancelled " << p->second->first << " -> " << p->first << dendl;

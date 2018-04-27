@@ -25,10 +25,13 @@
  * excessive requests for more of them are delayed, until some slots are put
  * back, so @p get_current() drops below the limit after fulfills the requests.
  */
+// 限制消费的资源数量,当达到max值时，请求就会被阻塞
 class Throttle {
   CephContext *cct;
   const std::string name;
   PerfCountersRef logger;
+  // count: 当前占用slot的数量
+  // max: 数量的最大值
   std::atomic<int64_t> count = { 0 }, max = { 0 };
   std::mutex lock;
   std::list<std::condition_variable> conds;
@@ -94,7 +97,7 @@ public:
    * total number taken by consumer would exceed the maximum number.
    * @param c number of slots to get
    * @param m new maximum number to set, ignored if it is 0
-   * @returns true if this request is blocked due to the throttling, false 
+   * @returns true if this request is blocked due to the throttling, false
    * otherwise
    */
   bool get(int64_t c = 1, int64_t m = 0);
@@ -370,16 +373,16 @@ class TokenBucketThrottle {
 public:
   TokenBucketThrottle(CephContext *cct, uint64_t capacity, uint64_t avg,
   		    SafeTimer *timer, Mutex *timer_lock);
-  
+
   ~TokenBucketThrottle();
-  
+
   template <typename T, typename I, void(T::*MF)(int, I*)>
   bool get(uint64_t c, T *handler, I *item) {
     if (0 == m_throttle.max)
       return false;
-  
+
     bool waited = false;
-  
+
     Mutex::Locker lock(m_lock);
     uint64_t got = m_throttle.get(c);
     if (got < c) {
@@ -392,8 +395,8 @@ public:
     }
     return waited;
   }
-  
-  
+
+
   void set_max(uint64_t m);
   void set_average(uint64_t avg);
 

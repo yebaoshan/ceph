@@ -52,6 +52,7 @@ void *Finisher::finisher_thread_entry()
       // To reduce lock contention, we swap out the queue to process.
       // This way other threads can submit new contexts to complete
       // while we are working.
+      // 使用swap，减少锁的使用范围，swap后，finsiher_queue不存在元素了
       vector<pair<Context*,int>> ls;
       ls.swap(finisher_queue);
       finisher_running = true;
@@ -82,7 +83,7 @@ void *Finisher::finisher_thread_entry()
       finisher_empty_cond.Signal();
     if (finisher_stop)
       break;
-    
+
     ldout(cct, 10) << "finisher_thread sleeping" << dendl;
     finisher_cond.Wait(finisher_lock);
   }
