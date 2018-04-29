@@ -250,6 +250,8 @@ public:
     high_queue[priority].enqueue_front(cl, 0, std::move(item));
   }
 
+    //mqueue.enqueue(
+    //    id, priority, m->get_cost(), QueueItem(m));
   void enqueue(K cl, unsigned priority, unsigned cost, T&& item) final {
     if (cost < min_cost)
       cost = min_cost;

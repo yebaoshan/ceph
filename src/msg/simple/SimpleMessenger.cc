@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <errno.h>
@@ -103,11 +103,11 @@ int SimpleMessenger::_send_message(Message *m, const entity_inst_t& dest)
   m->set_cct(cct);
 
   if (!m->get_priority()) m->set_priority(get_default_send_priority());
- 
+
   ldout(cct,1) <<"--> " << dest.name << " "
           << dest.addr << " -- " << *m
     	  << " -- ?+" << m->get_data().length()
-	  << " " << m 
+	  << " " << m
 	  << dendl;
 
   if (dest.addr == entity_addr_t()) {
@@ -221,6 +221,7 @@ void SimpleMessenger::reaper_entry()
 /*
  * note: assumes lock is held
  */
+// 释放pipe相关联的资源
 void SimpleMessenger::reaper()
 {
   ldout(cct,10) << "reaper" << dendl;
@@ -381,9 +382,9 @@ Pipe *SimpleMessenger::connect_rank(const entity_addr_t& addr,
 {
   assert(lock.is_locked());
   assert(addr != my_inst.addr);
-  
+
   ldout(cct,10) << "connect_rank to " << addr << ", creating pipe and registering" << dendl;
-  
+
   // create pipe
   Pipe *pipe = new Pipe(this, Pipe::STATE_CONNECTING,
 			static_cast<PipeConnection*>(con));

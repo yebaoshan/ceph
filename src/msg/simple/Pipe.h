@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_MSGR_PIPE_H
@@ -62,14 +62,14 @@ static const int SM_IOV_MAX = (IOV_MAX >= 1024 ? IOV_MAX / 4 : IOV_MAX);
       void *entry() override { pipe->writer(); return 0; }
     } writer_thread;
 
-    class DelayedDelivery;
+    class DelayedDelivery; // 用于故障注入测试
     DelayedDelivery *delay_thread;
   public:
     Pipe(SimpleMessenger *r, int st, PipeConnection *con);
     ~Pipe() override;
 
     SimpleMessenger *msgr;
-    uint64_t conn_id;
+    uint64_t conn_id; // 唯一id
     ostream& _pipe_prefix(std::ostream &out) const;
 
     Pipe* get() {
@@ -81,10 +81,10 @@ static const int SM_IOV_MAX = (IOV_MAX >= 1024 ? IOV_MAX / 4 : IOV_MAX);
       return state == STATE_OPEN;
     }
 
-    char *recv_buf;
-    size_t recv_max_prefetch;
-    size_t recv_ofs;
-    size_t recv_len;
+    char *recv_buf; // 接收缓存区
+    size_t recv_max_prefetch; // 接收缓存区一次预取的最大值
+    size_t recv_ofs; // 接收的偏移量
+    size_t recv_len; // 接收的长度
 
     enum {
       STATE_ACCEPTING,
@@ -113,17 +113,17 @@ static const int SM_IOV_MAX = (IOV_MAX >= 1024 ? IOV_MAX / 4 : IOV_MAX);
     }
 
   private:
-    int sd;
-    struct iovec msgvec[SM_IOV_MAX];
+    int sd; // 对应的socket fd
+    struct iovec msgvec[SM_IOV_MAX]; // 发送消息的iovec结构
 
   public:
-    int port;
-    int peer_type;
-    entity_addr_t peer_addr;
-    Messenger::Policy policy;
-    
+    int port; // 链接端口
+    int peer_type; // 链接类型
+    entity_addr_t peer_addr; // 对方地址
+    Messenger::Policy policy; // 策略
+
     Mutex pipe_lock;
-    int state;
+    int state; // 当前状态
     std::atomic<bool> state_closed = { false }; // true iff state = STATE_CLOSED
 
     // session_security handles any signatures or encryptions required for this pipe's msgs. PLR
@@ -141,19 +141,23 @@ static const int SM_IOV_MAX = (IOV_MAX >= 1024 ? IOV_MAX / 4 : IOV_MAX);
     bool notify_on_dispatch_done; /// something wants a signal when dispatch done
     bool writer_running;
 
+    // 准备发送的消息优先队列
     map<int, list<Message*> > out_q;  // priority queue for outbound msgs
+    // 接收消息的DispatchQueue
     DispatchQueue *in_q;
+    // 要发送的消息
     list<Message*> sent;
     Cond cond;
     bool send_keepalive;
     bool send_keepalive_ack;
     utime_t keepalive_ack_stamp;
+    // 如过Pipe队列销毁，停止增加
     bool halt_delivery; //if a pipe's queue is destroyed, stop adding to it
-    
+
     __u32 connect_seq, peer_global_seq;
-    uint64_t out_seq;
-    uint64_t in_seq, in_seq_acked;
-    
+    uint64_t out_seq; // 发送消息的序列号
+    uint64_t in_seq, in_seq_acked; // 接收到消息的序号和ACK的序号
+
     void set_socket_options();
 
     int accept();   // server handshake

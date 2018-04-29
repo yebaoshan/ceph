@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <sys/types.h>
@@ -38,7 +38,7 @@
 #include "include/random.h"
 
 // Constant to limit starting sequence number to 2^31.  Nothing special about it, just a big number.  PLR
-#define SEQ_MASK  0x7fffffff 
+#define SEQ_MASK  0x7fffffff
 #define dout_subsys ceph_subsys_ms
 
 #undef dout_prefix
@@ -336,7 +336,7 @@ int Pipe::accept()
   bool authorizer_valid;
   uint64_t feat_missing;
   bool replaced = false;
-  // this variable denotes if the connection attempt from peer is a hard 
+  // this variable denotes if the connection attempt from peer is a hard
   // reset or not, it is true if there is an existing connection and the
   // connection sequence from peer is equal to zero
   bool is_reset_from_peer = false;
@@ -385,7 +385,7 @@ int Pipe::accept()
   }
 
   ldout(msgr->cct,1) << "accept sd=" << sd << " " << socket_addr << dendl;
-  
+
   // identify peer
   if (tcp_read(banner, strlen(CEPH_BANNER)) < 0) {
     ldout(msgr->cct,10) << "accept couldn't read banner" << dendl;
@@ -423,7 +423,7 @@ int Pipe::accept()
 	    << " (socket is " << socket_addr << ")" << dendl;
   }
   set_peer_addr(peer_addr);  // so that connection_state gets set up
-  
+
   while (1) {
     if (tcp_read((char*)&connect, sizeof(connect)) < 0) {
       ldout(msgr->cct,10) << "accept couldn't read connect" << dendl;
@@ -444,7 +444,7 @@ int Pipe::accept()
     ldout(msgr->cct,20) << "accept got peer connect_seq " << connect.connect_seq
 	     << " global_seq " << connect.global_seq
 	     << dendl;
-    
+
     msgr->lock.Lock();   // FIXME
     pipe_lock.Lock();
     if (msgr->dispatch_queue.stop)
@@ -499,7 +499,7 @@ int Pipe::accept()
       reply.tag = CEPH_MSGR_TAG_FEATURES;
       goto reply;
     }
-    
+
     // Check the authorizer.  If not good, bail out.
 
     pipe_lock.Unlock();
@@ -514,7 +514,7 @@ int Pipe::accept()
       reply.tag = CEPH_MSGR_TAG_BADAUTHORIZER;
       session_security.reset();
       goto reply;
-    } 
+    }
 
     // We've verified the authorizer for this pipe, so set up the session security structure.  PLR
 
@@ -527,7 +527,7 @@ int Pipe::accept()
       goto shutting_down;
     if (state != STATE_ACCEPTING)
       goto shutting_down;
-    
+
     // existing?
     existing = msgr->_lookup_pipe(peer_addr);
     if (existing) {
@@ -568,7 +568,7 @@ int Pipe::accept()
 	ldout(msgr->cct,10) << "accept existing " << existing << ".gseq " << existing->peer_global_seq
 		 << " <= " << connect.global_seq << ", looks ok" << dendl;
       }
-      
+
       if (existing->policy.lossy) {
 	ldout(msgr->cct,0) << "accept replacing existing (lossy) channel (new one lossy="
 	        << policy.lossy << ")" << dendl;
@@ -651,7 +651,7 @@ int Pipe::accept()
       assert(connect.global_seq >= existing->peer_global_seq);
       if (policy.resetcheck &&   // RESETSESSION only used by servers; peers do not reset each other
 	  existing->connect_seq == 0) {
-	ldout(msgr->cct,0) << "accept we reset (peer sent cseq " << connect.connect_seq 
+	ldout(msgr->cct,0) << "accept we reset (peer sent cseq " << connect.connect_seq
 		 << ", " << existing << ".cseq = " << existing->connect_seq
 		 << "), sending RESETSESSION" << dendl;
 	reply.tag = CEPH_MSGR_TAG_RESETSESSION;
@@ -686,7 +686,7 @@ int Pipe::accept()
     reply.connect_seq = existing->connect_seq + 1;
     existing->pipe_lock.Unlock();
     msgr->lock.Unlock();
-    goto reply;    
+    goto reply;
 
   reply:
     assert(pipe_lock.is_locked());
@@ -702,7 +702,7 @@ int Pipe::accept()
 	goto fail_unlocked;
     }
   }
-  
+
  replace:
   assert(existing->pipe_lock.is_locked());
   assert(pipe_lock.is_locked());
@@ -976,7 +976,7 @@ int Pipe::connect()
   join_reader();
 
   pipe_lock.Unlock();
-  
+
   char tag = -1;
   int rc = -1;
   struct msghdr msg;
@@ -1087,7 +1087,7 @@ int Pipe::connect()
     if (paddr.is_blank_ip() &&
 	peer_addr.get_port() == paddr.get_port() &&
 	peer_addr.get_nonce() == paddr.get_nonce()) {
-      ldout(msgr->cct,0) << "connect claims to be " 
+      ldout(msgr->cct,0) << "connect claims to be "
 	      << paddr << " not " << peer_addr << " - presumably this is the same node!" << dendl;
     } else {
       ldout(msgr->cct,10) << "connect claims to be "
@@ -1129,7 +1129,7 @@ int Pipe::connect()
     connect.protocol_version = msgr->get_proto_version(peer_type, true);
     connect.authorizer_protocol = authorizer ? authorizer->protocol : 0;
     connect.authorizer_len = authorizer ? authorizer->bl.length() : 0;
-    if (authorizer) 
+    if (authorizer)
       ldout(msgr->cct,10) << "connect.authorizer_len=" << connect.authorizer_len
 	       << " protocol=" << connect.authorizer_protocol << dendl;
     connect.flags = 0;
@@ -1302,7 +1302,7 @@ int Pipe::connect()
       connection_state->set_features((uint64_t)reply.features & (uint64_t)connect.features);
       ldout(msgr->cct,10) << "connect success " << connect_seq << ", lossy = " << policy.lossy
 	       << ", features " << connection_state->get_features() << dendl;
-      
+
 
       // If we have an authorizer, get a new AuthSessionHandler to deal with ongoing security of the
       // connection.  PLR
@@ -1320,7 +1320,7 @@ int Pipe::connect()
 
       msgr->dispatch_queue.queue_connect(connection_state.get());
       msgr->ms_deliver_handle_fast_connect(connection_state.get());
-      
+
       if (!reader_running) {
 	ldout(msgr->cct,20) << "connect starting reader" << dendl;
 	start_reader();
@@ -1329,7 +1329,7 @@ int Pipe::connect()
       delete authorizer;
       return 0;
     }
-    
+
     // protocol error
     ldout(msgr->cct,0) << "connect got bad tag " << (int)tag << dendl;
     goto fail_locked;
@@ -1459,7 +1459,7 @@ void Pipe::fault(bool onread)
     ldout(msgr->cct,10) << "fault already connecting, reader shutting down" << dendl;
     return;
   }
-  
+
   ldout(msgr->cct,2) << "fault " << cpp_strerror(errno) << dendl;
 
   if (state == STATE_CLOSED ||
@@ -1597,7 +1597,7 @@ void Pipe::stop_and_wait()
     t.set_from_double(msgr->cct->_conf->ms_inject_internal_delays);
     t.sleep();
   }
-  
+
   if (delay_thread) {
     pipe_lock.Unlock();
     delay_thread->stop_fast_dispatching();
@@ -1706,7 +1706,7 @@ void Pipe::reader()
       int r = read_message(&m, auth_handler.get());
 
       pipe_lock.Lock();
-      
+
       if (!m) {
 	if (r < 0)
 	  fault(true);
@@ -1722,7 +1722,7 @@ void Pipe::reader()
 	continue;
       }
 
-      // check received seq#.  if it is old, drop the message.  
+      // check received seq#.  if it is old, drop the message.
       // note that incoming messages may skip ahead.  this is convenient for the client
       // side queueing because messages can't be renumbered, but the (kernel) client will
       // occasionally pull a message out of the sent queue to send elsewhere.  in that case
@@ -1751,13 +1751,16 @@ void Pipe::reader()
       in_seq = m->get_seq();
 
       cond.Signal();  // wake up writer, to ack this
-      
+
       ldout(msgr->cct,10) << "reader got message "
 	       << m->get_seq() << " " << m << " " << *m
 	       << dendl;
+
+      // 预处理
       in_q->fast_preprocess(m);
 
       if (delay_thread) {
+        // 延迟处理
         utime_t release;
         if (rand() % 10000 < msgr->cct->_conf->ms_inject_delay_probability * 10000.0) {
           release = m->get_recv_stamp();
@@ -1767,7 +1770,8 @@ void Pipe::reader()
         delay_thread->queue(release, m);
       } else {
         if (in_q->can_fast_dispatch(m)) {
-	  reader_dispatching = true;
+          // 快速处理; 直接调用注册的fast_dispatch函数进行处理，不加入队列
+          reader_dispatching = true;
           pipe_lock.Unlock();
           in_q->fast_dispatch(m);
           pipe_lock.Lock();
@@ -1778,11 +1782,12 @@ void Pipe::reader()
 	    cond.Signal();
 	  }
         } else {
+          // 正常处理
           in_q->enqueue(m, m->get_priority(), conn_id);
         }
       }
     }
-    
+
     else if (tag == CEPH_MSGR_TAG_CLOSE) {
       ldout(msgr->cct,20) << "reader got CLOSE" << dendl;
       pipe_lock.Lock();
@@ -1802,7 +1807,7 @@ void Pipe::reader()
     }
   }
 
- 
+
   // reap?
   reader_running = false;
   reader_needs_join = true;
@@ -1830,7 +1835,7 @@ void Pipe::writer()
       connect();
       continue;
     }
-    
+
     if (state == STATE_CLOSING) {
       // write close tag
       ldout(msgr->cct,20) << "writer writing CLOSE tag" << dendl;
@@ -1903,7 +1908,7 @@ void Pipe::writer()
 	m->set_seq(++out_seq);
 	if (!policy.lossy) {
 	  // put on sent list
-	  sent.push_back(m); 
+	  sent.push_back(m);
 	  m->get();
 	}
 
@@ -1964,12 +1969,12 @@ void Pipe::writer()
       }
       continue;
     }
-    
+
     // wait
     ldout(msgr->cct,20) << "writer sleeping" << dendl;
     cond.Wait(pipe_lock);
   }
-  
+
   ldout(msgr->cct,20) << "writer finishing" << dendl;
 
   // reap?
@@ -1986,6 +1991,7 @@ void Pipe::unlock_maybe_reap()
     if (delay_thread && delay_thread->is_flushing()) {
       delay_thread->wait_for_flush();
     }
+    // 加入messager的reap队列，释放相关资源
     msgr->queue_reap(this);
   } else {
     pipe_lock.Unlock();
@@ -2018,8 +2024,8 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
   int ret = -1;
   // envelope
   //ldout(msgr->cct,10) << "receiver.read_message from sd " << sd  << dendl;
-  
-  ceph_msg_header header; 
+
+  ceph_msg_header header;
   ceph_msg_footer footer;
   __u32 header_crc = 0;
 
@@ -2169,7 +2175,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
     footer.sig = 0;
     footer.flags = old_footer.flags;
   }
-  
+
   aborted = (footer.flags & CEPH_MSG_FOOTER_COMPLETE) == 0;
   ldout(msgr->cct,10) << "aborted = " << aborted << dendl;
   if (aborted) {
@@ -2200,7 +2206,7 @@ int Pipe::read_message(Message **pm, AuthSessionHandler* auth_handler)
       message->put();
       ret = -EINVAL;
       goto out_dethrottle;
-    } 
+    }
   }
 
   message->set_byte_throttler(policy.throttler_bytes);
@@ -2244,10 +2250,10 @@ int Pipe::do_sendmsg(struct msghdr *msg, unsigned len, bool more)
   while (len > 0) {
     int r;
     r = ::sendmsg(sd, msg, MSG_NOSIGNAL | (more ? MSG_MORE : 0));
-    if (r == 0) 
+    if (r == 0)
       ldout(msgr->cct,10) << "do_sendmsg hmm do_sendmsg got r==0!" << dendl;
     if (r < 0) {
-      r = -errno; 
+      r = -errno;
       ldout(msgr->cct,1) << "do_sendmsg error " << cpp_strerror(r) << dendl;
       return r;
     }
@@ -2258,7 +2264,7 @@ int Pipe::do_sendmsg(struct msghdr *msg, unsigned len, bool more)
 
     len -= r;
     if (len == 0) break;
-    
+
     // hrmph.  trim r bytes off the front of our message.
     ldout(msgr->cct,20) << "do_sendmsg short write did " << r << ", still have " << len << dendl;
     while (r > 0) {
@@ -2298,7 +2304,7 @@ int Pipe::write_ack(uint64_t seq)
   msgvec[1].iov_len = sizeof(s);
   msg.msg_iov = msgvec;
   msg.msg_iovlen = 2;
-  
+
   if (do_sendmsg(&msg, 1 + sizeof(s), true) < 0)
     return -1;	
   return 0;
@@ -2317,7 +2323,7 @@ int Pipe::write_keepalive()
   msgvec[0].iov_len = 1;
   msg.msg_iov = msgvec;
   msg.msg_iovlen = 1;
-  
+
   if (do_sendmsg(&msg, 1) < 0)
     return -1;	
   return 0;
@@ -2353,7 +2359,7 @@ int Pipe::write_message(const ceph_msg_header& header, const ceph_msg_footer& fo
   memset(&msg, 0, sizeof(msg));
   msg.msg_iov = msgvec;
   int msglen = 0;
-  
+
   // send tag
   char tag = CEPH_MSGR_TAG_MSG;
   msgvec[msg.msg_iovlen].iov_base = &tag;
@@ -2383,24 +2389,24 @@ int Pipe::write_message(const ceph_msg_header& header, const ceph_msg_footer& fo
     ldout(msgr->cct,30) << " bl_pos " << bl_pos << " b_off " << b_off
 	     << " leftinchunk " << left
 	     << " buffer len " << pb->length()
-	     << " writing " << donow 
+	     << " writing " << donow
 	     << dendl;
-    
+
     if (msg.msg_iovlen >= SM_IOV_MAX-2) {
       if (do_sendmsg(&msg, msglen, true))
 	goto fail;
-      
+
       // and restart the iov
       msg.msg_iov = msgvec;
       msg.msg_iovlen = 0;
       msglen = 0;
     }
-    
+
     msgvec[msg.msg_iovlen].iov_base = (void*)(pb->c_str()+b_off);
     msgvec[msg.msg_iovlen].iov_len = donow;
     msglen += donow;
     msg.msg_iovlen++;
-    
+
     assert(left >= donow);
     left -= donow;
     b_off += donow;

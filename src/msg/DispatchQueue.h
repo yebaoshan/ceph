@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_DISPATCHQUEUE_H
@@ -60,16 +60,16 @@ class DispatchQueue {
       return con.get();
     }
   };
-    
+
   CephContext *cct;
   Messenger *msgr;
   mutable Mutex lock;
   Cond cond;
 
-  PrioritizedQueue<QueueItem, uint64_t> mqueue;
+  PrioritizedQueue<QueueItem, uint64_t> mqueue; // 接收消息的优先队列
 
-  set<pair<double, Message*> > marrival;
-  map<Message *, set<pair<double, Message*> >::iterator> marrival_map;
+  set<pair<double, Message*> > marrival; // 接收到的消息集合 为recv_time message
+  map<Message *, set<pair<double, Message*> >::iterator> marrival_map; //消息->在marrival中所在位置
   void add_arrival(Message *m) {
     marrival_map.insert(
       make_pair(
@@ -87,7 +87,7 @@ class DispatchQueue {
   }
 
   std::atomic<uint64_t> next_id;
-    
+
   enum { D_CONNECT = 1, D_ACCEPT, D_BAD_REMOTE_RESET, D_BAD_RESET, D_CONN_REFUSED, D_NUM_CODES };
 
   /**
