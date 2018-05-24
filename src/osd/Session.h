@@ -135,10 +135,10 @@ struct Session : public RefCountedObject {
   WatchConState wstate;
 
   Mutex session_dispatch_lock;
-  boost::intrusive::list<OpRequest> waiting_on_map;
+  boost::intrusive::list<OpRequest> waiting_on_map; // 所有的OpRequest请求都先添加到此队列
 
-  ceph::spinlock sent_epoch_lock;
-  epoch_t last_sent_epoch;
+  ceph::spinlock sent_epoch_lock; // 通过消息向外通知的epoch
+  epoch_t last_sent_epoch; // 发送对端的epoch
   ceph::spinlock received_map_lock;
   epoch_t received_map_epoch; // largest epoch seen in MOSDMap from here
 

@@ -262,16 +262,16 @@ void MonMap::generate_test_instances(list<MonMap*>& o)
 }
 
 // read from/write to a file
-int MonMap::write(const char *fn) 
+int MonMap::write(const char *fn)
 {
   // encode
   bufferlist bl;
   encode(bl, CEPH_FEATURES_ALL);
-  
+
   return bl.write_file(fn);
 }
 
-int MonMap::read(const char *fn) 
+int MonMap::read(const char *fn)
 {
   // read
   bufferlist bl;
@@ -302,7 +302,7 @@ void MonMap::print_summary(ostream& out) const
   }
   out << "}";
 }
- 
+
 void MonMap::print(ostream& out) const
 {
   out << "epoch " << epoch << "\n";
@@ -436,7 +436,7 @@ void MonMap::set_initial_members(CephContext *cct,
   }
 }
 
-
+// 从配置文件里检查是否有初始化Monitor地址信息
 int MonMap::build_initial(CephContext *cct, ostream& errout)
 {
   const md_config_t *conf = cct->_conf;
@@ -554,7 +554,7 @@ int MonMap::build_initial(CephContext *cct, ostream& errout)
     if (DNSResolver::get_instance()->resolve_srv_hosts(cct, srv_name,
         DNSResolver::SRV_Protocol::TCP, domain, &records) != 0) {
 
-      errout << "unable to get monitor info from DNS SRV with service name: " << 
+      errout << "unable to get monitor info from DNS SRV with service name: " <<
 	   "ceph-mon" << std::endl;
     }
     else {

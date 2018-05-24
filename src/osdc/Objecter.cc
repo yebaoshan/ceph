@@ -843,7 +843,7 @@ ceph_tid_t Objecter::linger_notify(LingerOp *info,
   info->on_reg_commit = onfinish;
 
   info->ctx_budget = take_linger_budget(info);
-  
+
   shunique_lock sul(rwlock, ceph::acquire_unique);
   _linger_submit(info, sul);
   logger->inc(l_osdc_linger_active);
@@ -2247,6 +2247,7 @@ void Objecter::resend_mon_ops()
 
 // read | write ---------------------------
 
+// 把封装好的操作Op通过网络发送出去
 void Objecter::op_submit(Op *op, ceph_tid_t *ptid, int *ctx_budget)
 {
   shunique_lock rl(rwlock, ceph::acquire_shared);
@@ -2267,6 +2268,7 @@ void Objecter::_op_submit_with_budget(Op *op, shunique_lock& sul,
   assert(op->ops.size() == op->out_rval.size());
   assert(op->ops.size() == op->out_handler.size());
 
+  // 处理Throttle相关的流量限制
   // throttle.  before we look at any state, because
   // _take_op_budget() may drop our lock while it blocks.
   if (!op->ctx_budgeted || (ctx_budget && (*ctx_budget == -1))) {
@@ -2278,6 +2280,7 @@ void Objecter::_op_submit_with_budget(Op *op, shunique_lock& sul,
     }
   }
 
+  // 设置定时期，当操作超时，就调用回调函数op_cancel取消操作
   if (osd_timeout > timespan(0)) {
     if (op->tid == 0)
       op->tid = ++last_tid;
@@ -2363,6 +2366,7 @@ void Objecter::_send_op_account(Op *op)
   }
 }
 
+// 完成关键的地址寻址和发送工作
 void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
 {
   // rwlock is locked
@@ -2373,9 +2377,11 @@ void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
   assert(op->session == NULL);
   OSDSession *s = NULL;
 
+  // 计算对象的目标OSD
   bool check_for_latest_map = _calc_target(&op->target, nullptr)
     == RECALC_OP_TARGET_POOL_DNE;
 
+  // 获取目标OSD的链接,返回值为-EAGAIN，就升级为写锁，重新获取
   // Try to get a session, including a retry if we need to take write lock
   int r = _get_session(op->target.osd, &s, sul);
   if (r == -EAGAIN ||
@@ -2417,7 +2423,7 @@ void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
   }
 
   bool need_send = false;
-
+  // 状态检查
   if (osdmap->get_epoch() < epoch_barrier) {
     ldout(cct, 10) << " barrier, paused " << op << " tid " << op->tid
 		   << dendl;
@@ -2460,6 +2466,7 @@ void Objecter::_op_submit(Op *op, shunique_lock& sul, ceph_tid_t *ptid)
 
   _session_op_assign(s, op);
 
+  // 发送
   if (need_send) {
     _send_op(op);
   }
@@ -2790,6 +2797,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
 		<< (is_write ? " is_write" : "")
 		<< dendl;
 
+  // 获取pg_pool_t信息
   const pg_pool_t *pi = osdmap->get_pg_pool(t->base_oloc.pool);
   if (!pi) {
     t->osd = -1;
@@ -2798,6 +2806,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
   ldout(cct,30) << __func__ << "  base pi " << pi
 		<< " pg_num " << pi->get_pg_num() << dendl;
 
+  // 检查是否强制重发
   bool force_resend = false;
   if (osdmap->get_epoch() == pi->last_force_op_resend) {
     if (t->last_force_resend < pi->last_force_op_resend) {
@@ -2809,6 +2818,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
   }
 
   // apply tiering
+  // 检查设置cache tier
   t->target_oid = t->base_oid;
   t->target_oloc = t->base_oloc;
   if ((t->flags & CEPH_OSD_FLAG_IGNORE_OVERLAY) == 0) {
@@ -2823,6 +2833,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
     }
   }
 
+  // 获取目标对象所在的PG
   pg_t pgid;
   if (t->precalc_pgid) {
     assert(t->flags & CEPH_OSD_FLAG_IGNORE_OVERLAY);
@@ -2848,6 +2859,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
   unsigned pg_num = pi->get_pg_num();
   int up_primary, acting_primary;
   vector<int> up, acting;
+  // 通过CRUSH算法，获取该PG对应的osd列表
   osdmap->pg_to_up_acting_osds(pgid, &up, &up_primary,
 			       &acting, &acting_primary);
   bool sort_bitwise = osdmap->test_flag(CEPH_OSDMAP_SORTBITWISE);
@@ -2918,6 +2930,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
     } else {
       int osd;
       bool read = is_read && !is_write;
+      // 读操作，且设置了CEPH_OSD_FLAG_BALANCE_READS标志，则随机选择一个副本读取
       if (read && (t->flags & CEPH_OSD_FLAG_BALANCE_READS)) {
 	int p = rand() % acting.size();
 	if (p)
@@ -2925,6 +2938,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
 	osd = acting[p];
 	ldout(cct, 10) << " chose random osd." << osd << " of " << acting
 		       << dendl;
+      // 读操作，且设置了CEPH_OSD_FLAG_LOCALIZE_READS标志，则尽可能选择本地副本读取
       } else if (read && (t->flags & CEPH_OSD_FLAG_LOCALIZE_READS) &&
 		 acting.size() > 1) {
 	// look for a local replica.  prefer the primary if the
@@ -2949,6 +2963,7 @@ int Objecter::_calc_target(op_target_t *t, Connection *con, bool any_change)
 	}
 	assert(best >= 0);
 	osd = acting[best];
+      // 写操作，target的OSD就设置为主OSD
       } else {
 	osd = acting_primary;
       }
@@ -3240,6 +3255,7 @@ void Objecter::_send_op(Op *op)
   }
 
   assert(op->tid > 0);
+  // 准备请求的消息
   MOSDOp *m = _prepare_osd_op(op);
 
   if (op->target.actual_pgid != m->get_spg()) {
@@ -5052,7 +5068,7 @@ void Objecter::enumerate_objects(
     const hobject_t &end,
     const uint32_t max,
     const bufferlist &filter_bl,
-    std::list<librados::ListObjectImpl> *result, 
+    std::list<librados::ListObjectImpl> *result,
     hobject_t *next,
     Context *on_finish)
 {

@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 #ifndef CEPH_CLASSHANDLER_H
 #define CEPH_CLASSHANDLER_H
@@ -18,11 +18,11 @@ public:
   struct ClassData;
 
   struct ClassMethod {
-    struct ClassHandler::ClassData *cls;
-    string name;
-    int flags;
-    cls_method_call_t func;
-    cls_method_cxx_call_t cxx_func;
+    struct ClassHandler::ClassData *cls; // 所属模块的ClassData的指针
+    string name; // 方法名
+    int flags; // 方法相关的标志
+    cls_method_call_t func; // C类型函数指针
+    cls_method_cxx_call_t cxx_func; // C++类型函数指针
 
     int exec(cls_method_context_t ctx, bufferlist& indata, bufferlist& outdata);
     void unregister();
@@ -47,7 +47,7 @@ public:
   };
 
   struct ClassData {
-    enum Status { 
+    enum Status {
       CLASS_UNKNOWN,
       CLASS_MISSING,         // missing
       CLASS_MISSING_DEPS,    // missing dependencies
@@ -55,21 +55,21 @@ public:
       CLASS_OPEN,            // initialized, usable
     } status;
 
-    string name;
-    ClassHandler *handler;
+    string name; // 模块的名字
+    ClassHandler *handler; // 管理模块的指针
     void *handle;
 
     bool whitelisted = false;
 
-    map<string, ClassMethod> methods_map;
-    map<string, ClassFilter> filters_map;
+    map<string, ClassMethod> methods_map; // 模块下所有注册的方法
+    map<string, ClassFilter> filters_map; // 模块下素有注册的过滤方法
 
     set<ClassData *> dependencies;         /* our dependencies */
     set<ClassData *> missing_dependencies; /* only missing dependencies */
 
     ClassMethod *_get_method(const char *mname);
 
-    ClassData() : status(CLASS_UNKNOWN), 
+    ClassData() : status(CLASS_UNKNOWN),
 		  handler(NULL),
 		  handle(NULL) {}
     ~ClassData() { }
@@ -119,7 +119,7 @@ public:
 
   void add_embedded_class(const string& cname);
   int open_class(const string& cname, ClassData **pcls);
-  
+
   ClassData *register_class(const char *cname);
   void unregister_class(ClassData *cls);
 

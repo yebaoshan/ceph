@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 
@@ -43,7 +43,7 @@ private:
   utime_t mtime;
   int32_t retry_attempt = -1;   // 0 is first attempt.  -1 if we don't know.
 
-  hobject_t hobj;
+  hobject_t hobj; // 操作对象
   spg_t pgid;
   bufferlist::iterator p;
   // Decoding flags. Decoding is only needed for messages catched by pipe reader.
@@ -236,7 +236,7 @@ public:
   bool has_flag(__u32 flag) const { return flags & flag; };
 
   bool is_retry_attempt() const { return flags & CEPH_OSD_FLAG_RETRY; }
-  void set_retry_attempt(unsigned a) { 
+  void set_retry_attempt(unsigned a) {
     if (a)
       flags |= CEPH_OSD_FLAG_RETRY;
     else
@@ -294,7 +294,7 @@ struct ceph_osd_request_head {
       encode(snap_seq, payload);
       __u32 num_snaps = snaps.size();
       encode(num_snaps, payload);
-      
+
       //::encode(ops, payload);
       __u16 num_ops = ops.size();
       encode(num_ops, payload);
@@ -435,7 +435,7 @@ struct ceph_osd_request_head {
       decode(snap_seq, p);
       __u32 num_snaps;
       decode(num_snaps, p);
-      
+
       //::decode(ops, p);
       __u16 num_ops;
       decode(num_ops, p);

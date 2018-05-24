@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -10,9 +10,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #ifndef CEPH_OSD_TYPES_H
@@ -200,7 +200,7 @@ inline bool operator!=(const osd_reqid_t& l, const osd_reqid_t& r) {
   return (l.name != r.name) || (l.inc != r.inc) || (l.tid != r.tid);
 }
 inline bool operator<(const osd_reqid_t& l, const osd_reqid_t& r) {
-  return (l.name < r.name) || (l.inc < r.inc) || 
+  return (l.name < r.name) || (l.inc < r.inc) ||
     (l.name == r.name && l.inc == r.inc && l.tid < r.tid);
 }
 inline bool operator<=(const osd_reqid_t& l, const osd_reqid_t& r) {
@@ -212,7 +212,7 @@ inline bool operator>=(const osd_reqid_t& l, const osd_reqid_t& r) { return !(l 
 
 namespace std {
   template<> struct hash<osd_reqid_t> {
-    size_t operator()(const osd_reqid_t &r) const { 
+    size_t operator()(const osd_reqid_t &r) const {
       static hash<uint64_t> H;
       return H(r.name.num() ^ r.tid ^ r.inc);
     }
@@ -515,7 +515,7 @@ struct spg_t {
 
   static const uint8_t calc_name_buf_size = pg_t::calc_name_buf_size + 4; // 36 + len('s') + len("255");
   char *calc_name(char *buf, const char *suffix_backwords) const;
- 
+
   bool parse(const char *s);
   bool parse(const std::string& s) {
     return parse(s.c_str());
@@ -750,7 +750,7 @@ inline ostream& operator<<(ostream& out, const coll_t& c) {
 
 namespace std {
   template<> struct hash<coll_t> {
-    size_t operator()(const coll_t &c) const { 
+    size_t operator()(const coll_t &c) const {
       size_t h = 0;
       string str(c.to_str());
       std::string::const_iterator end(str.end());
@@ -1020,7 +1020,7 @@ boost::optional<uint64_t> pg_string_state(const std::string& state);
 /*
  * pool_snap_info_t
  *
- * attributes for a single pool snapshot.  
+ * attributes for a single pool snapshot.
  */
 struct pool_snap_info_t {
   snapid_t snapid;
@@ -1388,7 +1388,7 @@ public:
   uint32_t min_read_recency_for_promote;   ///< minimum number of HitSet to check before promote on read
   uint32_t min_write_recency_for_promote;  ///< minimum number of HitSet to check before promote on write
   uint32_t hit_set_grade_decay_rate;   ///< current hit_set has highest priority on objects
-                                       ///temperature count,the follow hit_set's priority decay 
+                                       ///temperature count,the follow hit_set's priority decay
                                        ///by this params than pre hit_set
   uint32_t hit_set_search_last_n;   ///<accumulate atmost N hit_sets for temperature
 
@@ -1599,7 +1599,7 @@ public:
    * map a raw pg (with full precision ps) into an actual pg, for storage
    */
   pg_t raw_pg_to_pg(pg_t pg) const;
-  
+
   /*
    * map raw pg (full precision ps) into a placement seed.  include
    * pool id in that value so that different pools don't use the same
@@ -2195,7 +2195,7 @@ struct pg_history_t {
   epoch_t last_interval_clean; // first epoch of last_epoch_clean interval
   epoch_t last_epoch_split;    // as parent or child
   epoch_t last_epoch_marked_full;  // pool or cluster
-  
+
   /**
    * In the event of a map discontinuity, same_*_since may reflect the first
    * map the osd has seen in the new map sequence rather than the actual start
@@ -2243,7 +2243,7 @@ struct pg_history_t {
       last_epoch_split(0),
       last_epoch_marked_full(0),
       same_up_since(0), same_interval_since(0), same_primary_since(0) {}
-  
+
   bool merge(const pg_history_t &other) {
     // Here, we only update the fields which cannot be calculated from the OSDmap.
     bool modified = false;
@@ -2274,7 +2274,7 @@ struct pg_history_t {
       modified = true;
     }
     if (last_epoch_split < other.last_epoch_split) {
-      last_epoch_split = other.last_epoch_split; 
+      last_epoch_split = other.last_epoch_split;
       modified = true;
     }
     if (last_epoch_marked_full < other.last_epoch_marked_full) {
@@ -2326,7 +2326,7 @@ inline ostream& operator<<(ostream& out, const pg_history_t& h) {
 /**
  * pg_info_t - summary of PG statistics.
  *
- * some notes: 
+ * some notes:
  *  - last_complete implies we have all objects that existed as of that
  *    stamp, OR a newer object, OR have already applied a later delete.
  *  - if last_complete >= log.bottom, then we know pg contents thru log.head.
@@ -2338,7 +2338,7 @@ struct pg_info_t {
   eversion_t last_complete;    ///< last version pg was complete through.
   epoch_t last_epoch_started;  ///< last epoch at which this pg started on this osd
   epoch_t last_interval_started; ///< first epoch of last_epoch_started interval
-  
+
   version_t last_user_version; ///< last user object version applied to store
 
   eversion_t log_tail;         ///< oldest log entry.
@@ -2386,7 +2386,7 @@ struct pg_info_t {
       last_backfill(hobject_t::get_max()),
       last_backfill_bitwise(false)
   { }
-  
+
   void set_last_backfill(hobject_t pos) {
     last_backfill = pos;
     last_backfill_bitwise = true;
@@ -2409,7 +2409,7 @@ struct pg_info_t {
 };
 WRITE_CLASS_ENCODER(pg_info_t)
 
-inline ostream& operator<<(ostream& out, const pg_info_t& pgi) 
+inline ostream& operator<<(ostream& out, const pg_info_t& pgi)
 {
   out << pgi.pgid << "(";
   if (pgi.dne())
@@ -3070,7 +3070,7 @@ PastIntervals::PriorSet::PriorSet(
 	   << dendl;
 }
 
-/** 
+/**
  * pg_query_t - used to ask a peer for information about a pg.
  *
  * note: if version=0, type=LOG, then we just provide our full log.
@@ -3124,7 +3124,7 @@ struct pg_query_t {
       epoch_sent(epoch_sent), to(to), from(from) {
     assert(t == LOG);
   }
-  
+
   void encode(bufferlist &bl, uint64_t features) const;
   void decode(bufferlist::iterator &bl);
 
@@ -3387,7 +3387,7 @@ struct pg_log_entry_t {
      invalid_hash(false), invalid_pool(false) {
     snaps.reassign_to_mempool(mempool::mempool_osd_pglog);
   }
-      
+
   bool is_clone() const { return op == CLONE; }
   bool is_modify() const { return op == MODIFY; }
   bool is_promote() const { return op == PROMOTE; }
@@ -3495,7 +3495,7 @@ struct pg_log_t {
   /*
    *   head - newest entry (update|delete)
    *   tail - entry previous to oldest (update|delete) for which we have
-   *          complete negative information.  
+   *          complete negative information.
    * i.e. we can infer pg contents for any store whose last_update >= tail.
    */
   eversion_t head;    // newest entry
@@ -4230,7 +4230,7 @@ WRITE_CLASS_ENCODER(pg_nls_response_t)
 
 // For backwards compatibility with older OSD requests
 struct pg_ls_response_t {
-  collection_list_handle_t handle; 
+  collection_list_handle_t handle;
   list<pair<object_t, string> > entries;
 
   void encode(bufferlist& bl) const {
@@ -4376,7 +4376,7 @@ struct pg_create_t {
 WRITE_CLASS_ENCODER(pg_create_t)
 
 // -----------------------------------------
-
+// 记录对象那个内的分片信息
 class ObjectExtent {
   /**
    * ObjectExtents are used for specifying IO behavior against RADOS
@@ -4404,10 +4404,12 @@ class ObjectExtent {
   uint64_t    length;    // in object
   uint64_t    truncate_size;	// in object
 
+  // 对象的位置信息
   object_locator_t oloc;   // object locator (pool etc)
 
+  // Extents在buffer中的偏移和长度，有可能多个extents
   vector<pair<uint64_t,uint64_t> >  buffer_extents;  // off -> len.  extents in buffer being mapped (may be fragmented bc of striping!)
-  
+
   ObjectExtent() : objectno(0), offset(0), length(0), truncate_size(0) {}
   ObjectExtent(object_t o, uint64_t ono, uint64_t off, uint64_t l, uint64_t ts) :
     oid(o), objectno(ono), offset(off), length(l), truncate_size(ts) { }
@@ -4415,7 +4417,7 @@ class ObjectExtent {
 
 inline ostream& operator<<(ostream& out, const ObjectExtent &ex)
 {
-  return out << "extent(" 
+  return out << "extent("
              << ex.oid << " (" << ex.objectno << ") in " << ex.oloc
              << " " << ex.offset << "~" << ex.length
 	     << " -> " << ex.buffer_extents
@@ -4439,8 +4441,8 @@ public:
   epoch_t mounted;     // last epoch i mounted
   epoch_t clean_thru;  // epoch i was active and clean thru
 
-  OSDSuperblock() : 
-    whoami(-1), 
+  OSDSuperblock() :
+    whoami(-1),
     current_epoch(0), oldest_map(0), newest_map(0), weight(0),
     mounted(0), clean_thru(0) {
   }
@@ -4494,11 +4496,11 @@ struct SnapSet {
 
   /// get space accounted to clone
   uint64_t get_clone_bytes(snapid_t clone) const;
-    
+
   void encode(bufferlist& bl) const;
   void decode(bufferlist::iterator& bl);
   void dump(Formatter *f) const;
-  static void generate_test_instances(list<SnapSet*>& o);  
+  static void generate_test_instances(list<SnapSet*>& o);
 
   SnapContext get_ssc_as_of(snapid_t as_of) const {
     SnapContext out;
@@ -4565,7 +4567,7 @@ static inline ostream& operator<<(ostream& out, const notify_info_t& n) {
 
 struct chunk_info_t {
   enum {
-    FLAG_DIRTY = 1, 
+    FLAG_DIRTY = 1,
     FLAG_MISSING = 2,
     FLAG_HAS_REFERENCE = 4,
   };
@@ -4603,15 +4605,15 @@ struct object_info_t;
 struct object_manifest_t {
   enum {
     TYPE_NONE = 0,
-    TYPE_REDIRECT = 1, 
-    TYPE_CHUNKED = 2, 
+    TYPE_REDIRECT = 1,
+    TYPE_CHUNKED = 2,
   };
   uint8_t type;  // redirect, chunked, ...
   hobject_t redirect_target;
   map <uint64_t, chunk_info_t> chunk_map;
 
   object_manifest_t() : type(0) { }
-  object_manifest_t(uint8_t type, const hobject_t& redirect_target) 
+  object_manifest_t(uint8_t type, const hobject_t& redirect_target)
     : type(type), redirect_target(redirect_target) { }
 
   bool is_empty() const {
@@ -4720,7 +4722,7 @@ struct object_info_t {
   // opportunistic checksums; may or may not be present
   __u32 data_digest;  ///< data crc32c
   __u32 omap_digest;  ///< omap crc32c
-  
+
   // alloc hint attribute
   uint64_t expected_object_size, expected_write_size;
   uint32_t alloc_hint_flags;
@@ -5037,12 +5039,13 @@ struct ScrubMapBuilder {
   }
 };
 
+// 对象的一个操作
 struct OSDOp {
-  ceph_osd_op op;
-  sobject_t soid;
+  ceph_osd_op op; // 各种操作码和操作参数
+  sobject_t soid; // 操作对象
 
-  bufferlist indata, outdata;
-  errorcode32_t rval;
+  bufferlist indata, outdata; // 输入和输出bufferlist
+  errorcode32_t rval; // 操作结果
 
   OSDOp() : rval(0) {
     memset(&op, 0, sizeof(ceph_osd_op));

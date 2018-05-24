@@ -40,11 +40,11 @@ struct ObjectState {
 typedef ceph::shared_ptr<ObjectContext> ObjectContextRef;
 
 struct ObjectContext {
-  ObjectState obs;
+  ObjectState obs; // 对象状态
 
-  SnapSetContext *ssc;  // may be null
+  SnapSetContext *ssc;  // may be null // 快照上下文信息
 
-  Context *destructor_callback;
+  Context *destructor_callback; // 析构函数的
 
 public:
 

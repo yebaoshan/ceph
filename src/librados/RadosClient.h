@@ -43,19 +43,19 @@ class librados::RadosClient : public Dispatcher
 
 public:
   using Dispatcher::cct;
-  md_config_t *conf;
+  md_config_t *conf; // 配置文件
 private:
   enum {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
-  } state;
+  } state; // 和Monitor的网络连接状态
 
-  MonClient monclient;
+  MonClient monclient; // Monitor客户端
   MgrClient mgrclient;
-  Messenger *messenger;
+  Messenger *messenger; // 网络消息接口
 
-  uint64_t instance_id;
+  uint64_t instance_id; // rados客户端实例的id
 
   bool _dispatch(Message *m);
   bool ms_dispatch(Message *m) override;
@@ -66,14 +66,14 @@ private:
   void ms_handle_remote_reset(Connection *con) override;
   bool ms_handle_refused(Connection *con) override;
 
-  Objecter *objecter;
+  Objecter *objecter; // Objecter对象指针
 
   Mutex lock;
   Cond cond;
-  SafeTimer timer;
-  int refcnt;
+  SafeTimer timer; // 定时器
+  int refcnt; // 引用计数
 
-  version_t log_last_version;
+  version_t log_last_version; // log相关信息
   rados_log_callback_t log_cb;
   rados_log_callback2_t log_cb2;
   void *log_cb_arg;
@@ -86,7 +86,7 @@ private:
   int wait_for_osdmap();
 
 public:
-  Finisher finisher;
+  Finisher finisher; // 执行回调函数的finisher类
 
   explicit RadosClient(CephContext *cct_);
   ~RadosClient() override;

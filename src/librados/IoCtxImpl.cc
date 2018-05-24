@@ -435,7 +435,7 @@ int librados::IoCtxImpl::snap_remove(const char *snapName)
   reply = objecter->delete_pool_snap(poolid, sName, onfinish);
 
   if (reply < 0) {
-    delete onfinish; 
+    delete onfinish;
   } else {
     mylock.Lock();
     while(!done)
@@ -644,11 +644,13 @@ int librados::IoCtxImpl::write(const object_t& oid, bufferlist& bl,
 {
   if (len > UINT_MAX/2)
     return -E2BIG;
+  // 通过op封装写操作相关的函数
   ::ObjectOperation op;
   prepare_assert_ops(&op);
   bufferlist mybl;
   mybl.substr_of(bl, 0, len);
   op.write(off, mybl);
+  // operate完成处理
   return operate(oid, &op, NULL);
 }
 
@@ -713,11 +715,14 @@ int librados::IoCtxImpl::operate(const object_t& oid, ::ObjectOperation *o,
   int op = o->ops[0].op.op;
   ldout(client->cct, 10) << ceph_osd_op_name(op) << " oid=" << oid
 			 << " nspace=" << oloc.nspace << dendl;
+  // 把ObjectOperation类型封装成Op类型，添加了object_locator_t相关的pool信息
   Objecter::Op *objecter_op = objecter->prepare_mutate_op(oid, oloc,
 							  *o, snapc, ut, flags,
 							  oncommit, &ver);
+  // 将消息发送出去
   objecter->op_submit(objecter_op);
 
+  // 等待完成
   mylock.Lock();
   while (!done)
     cond.Wait(mylock);

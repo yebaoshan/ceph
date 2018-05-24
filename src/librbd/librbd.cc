@@ -1587,9 +1587,9 @@ namespace librbd {
   bool Image::snap_exists(const char *snap_name)
   {
     ImageCtx *ictx = (ImageCtx *)ctx;
-    tracepoint(librbd, snap_exists_enter, ictx, ictx->name.c_str(), 
+    tracepoint(librbd, snap_exists_enter, ictx, ictx->name.c_str(),
       ictx->snap_name.c_str(), ictx->read_only, snap_name);
-    bool exists; 
+    bool exists;
     int r = librbd::snap_exists(ictx, cls::rbd::UserSnapshotNamespace(), snap_name, &exists);
     tracepoint(librbd, snap_exists_exit, r, exists);
     if (r < 0) {
@@ -1603,7 +1603,7 @@ namespace librbd {
   int Image::snap_exists2(const char *snap_name, bool *exists)
   {
     ImageCtx *ictx = (ImageCtx *)ctx;
-    tracepoint(librbd, snap_exists_enter, ictx, ictx->name.c_str(), 
+    tracepoint(librbd, snap_exists_enter, ictx, ictx->name.c_str(),
       ictx->snap_name.c_str(), ictx->read_only, snap_name);
     int r = librbd::snap_exists(ictx, cls::rbd::UserSnapshotNamespace(), snap_name, exists);
     tracepoint(librbd, snap_exists_exit, r, *exists);
@@ -2498,6 +2498,7 @@ extern "C" int rbd_create4(rados_ioctx_t p, const char *name,
   TracepointProvider::initialize<tracepoint_traits>(get_cct(io_ctx));
   tracepoint(librbd, create4_enter, io_ctx.get_pool_name().c_str(), io_ctx.get_id(), name, size, opts);
   librbd::ImageOptions opts_(opts);
+  // 设置RBD相应的参数
   int r = librbd::create(io_ctx, name, "", size, opts_, "", "", false);
   tracepoint(librbd, create4_exit, r);
   return r;

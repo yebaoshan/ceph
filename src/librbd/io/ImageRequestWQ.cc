@@ -307,6 +307,7 @@ void ImageRequestWQ<I>::aio_write(AioCompletion *c, uint64_t off, uint64_t len,
   }
 
   RWLock::RLocker owner_locker(m_image_ctx.owner_lock);
+  // 非阻塞IO,或有阻塞请求
   if (m_image_ctx.non_blocking_aio || writes_blocked()) {
     queue(ImageDispatchSpec<I>::create_write_request(
             m_image_ctx, c, {{off, len}}, std::move(bl), op_flags, trace));
@@ -314,6 +315,7 @@ void ImageRequestWQ<I>::aio_write(AioCompletion *c, uint64_t off, uint64_t len,
     c->start_op();
     ImageRequest<I>::aio_write(&m_image_ctx, c, {{off, len}},
 			       std::move(bl), op_flags, trace);
+    // 发送
     finish_in_flight_io();
   }
   trace.event("finish");

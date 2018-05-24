@@ -3603,7 +3603,7 @@ int old_snapshot_rename(cls_method_context_t hctx, bufferlist *in, bufferlist *o
   dst_snap_name = dst.c_str();
 
   const char *cur_snap_name;
-  for (cur_snap_name = snap_names; cur_snap_name < end; 
+  for (cur_snap_name = snap_names; cur_snap_name < end;
     cur_snap_name += strlen(cur_snap_name) + 1) {
     if (strcmp(cur_snap_name, dst_snap_name) == 0)
       return -EEXIST;
@@ -3621,7 +3621,7 @@ int old_snapshot_rename(cls_method_context_t hctx, bufferlist *in, bufferlist *o
     CLS_ERR("couldn't find snap %llu\n", (unsigned long long)src_snap_id.val);
     return -ENOENT;
   }
-  
+
   CLS_LOG(20, "rename snap with snap id %llu to dest name %s", (unsigned long long)src_snap_id.val, dst_snap_name);
   header->snap_names_len  = header->snap_names_len - strlen(snap_names) + dst.length();
 
@@ -6179,6 +6179,7 @@ CLS_INIT(rbd)
   cls_method_handle_t h_trash_list;
   cls_method_handle_t h_trash_get;
 
+  // 注册rbd模块相关接口
   cls_register("rbd", &h_class);
   cls_register_cxx_method(h_class, "create",
 			  CLS_METHOD_RD | CLS_METHOD_WR,

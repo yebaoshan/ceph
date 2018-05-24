@@ -50,6 +50,7 @@ enum {
   l_objectcacher_last,
 };
 
+// 提供了客户的基于LRU算法对象数据缓存功能
 class ObjectCacher {
   PerfCounters *perfcounter;
  public:

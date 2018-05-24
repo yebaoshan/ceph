@@ -59,14 +59,15 @@ class PerfCounters;
 
 // -----------------------------------------
 
+// 用于操作相关的参数统一封装在此结构，可一次封装多个对象的操作
 struct ObjectOperation {
-  vector<OSDOp> ops;
-  int flags;
-  int priority;
+  vector<OSDOp> ops; // 多个操作
+  int flags; // 操作标志
+  int priority; // 优先级
 
-  vector<bufferlist*> out_bl;
-  vector<Context*> out_handler;
-  vector<int*> out_rval;
+  vector<bufferlist*> out_bl; // 每个操作对应的输出缓冲区
+  vector<Context*> out_handler; // 每个操作对应的回调函数队列
+  vector<int*> out_rval; // 每个操作对应的操作结果队列
 
   ObjectOperation() : flags(0), priority(0) {}
   ~ObjectOperation() {
@@ -1131,7 +1132,7 @@ struct ObjectOperation {
   /*
    * Extensible tier
    */
-  void set_redirect(object_t tgt, snapid_t snapid, object_locator_t tgt_oloc, 
+  void set_redirect(object_t tgt, snapid_t snapid, object_locator_t tgt_oloc,
 		    version_t tgt_version, int flag) {
     OSDOp& osd_op = add_op(CEPH_OSD_OP_SET_REDIRECT);
     osd_op.op.copy_from.snapid = snapid;
@@ -1268,15 +1269,16 @@ public:
 
   struct OSDSession;
 
+  // 封装对象所在的PG，以及PG对应的OSD列表等地址信息
   struct op_target_t {
     int flags = 0;
 
     epoch_t epoch = 0;  ///< latest epoch we calculated the mapping
 
-    object_t base_oid;
-    object_locator_t base_oloc;
-    object_t target_oid;
-    object_locator_t target_oloc;
+    object_t base_oid; // 读取的对象
+    object_locator_t base_oloc; // 对象的pool信息
+    object_t target_oid; // 最终读取的目标对象
+    object_locator_t target_oloc; // 最终目标对象的pool信息
 
     ///< true if we are directed at base_pgid, not base_oid
     bool precalc_pgid = false;
@@ -1339,25 +1341,26 @@ public:
     void dump(Formatter *f) const;
   };
 
+  // 完成一个操作的相关上下文信息
   struct Op : public RefCountedObject {
-    OSDSession *session;
-    int incarnation;
+    OSDSession *session; // OSD相关的Session信息
+    int incarnation; // 引用次数
 
-    op_target_t target;
+    op_target_t target; // 地址信息
 
     ConnectionRef con;  // for rx buffer only
     uint64_t features;  // explicitly specified op features
 
-    vector<OSDOp> ops;
+    vector<OSDOp> ops; // 对应多个操作的封装
 
-    snapid_t snapid;
-    SnapContext snapc;
+    snapid_t snapid; // 快照id
+    SnapContext snapc; // pool层级的快照信息
     ceph::real_time mtime;
 
-    bufferlist *outbl;
-    vector<bufferlist*> out_bl;
-    vector<Context*> out_handler;
-    vector<int*> out_rval;
+    bufferlist *outbl; // 输出的bufferlist
+    vector<bufferlist*> out_bl; // 每个操作对应的输出缓冲队列
+    vector<Context*> out_handler; // 每个操作对应的回调函数
+    vector<int*> out_rval; // 每个操作对应的输出结果
 
     int priority;
     Context *onfinish;
@@ -2903,7 +2906,7 @@ public:
     const hobject_t &end,
     const uint32_t max,
     const bufferlist &filter_bl,
-    std::list<librados::ListObjectImpl> *result, 
+    std::list<librados::ListObjectImpl> *result,
     hobject_t *next,
     Context *on_finish);
 
@@ -2914,7 +2917,7 @@ public:
       const int64_t pool_id,
       int budget,
       epoch_t reply_epoch,
-      std::list<librados::ListObjectImpl> *result, 
+      std::list<librados::ListObjectImpl> *result,
       hobject_t *next,
       Context *on_finish);
   friend class C_EnumerateReply;

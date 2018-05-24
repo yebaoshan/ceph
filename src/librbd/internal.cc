@@ -846,6 +846,7 @@ bool compare_by_name(const child_info_t& c1, const child_info_t& c2)
 		   << "id= " << id << ", "
 		   << "size=" << size << ", opts=" << opts << dendl;
 
+    // 获取格式
     uint64_t format;
     if (opts.get(RBD_IMAGE_OPTION_FORMAT, &format) != 0)
       format = cct->_conf->get_val<int64_t>("rbd_default_format");
@@ -863,6 +864,7 @@ bool compare_by_name(const child_info_t& c1, const child_info_t& c2)
       return -EEXIST;
     }
 
+    // 获取RBD的order值， 其决定了RBD对象size大小
     uint64_t order = 0;
     if (opts.get(RBD_IMAGE_OPTION_ORDER, &order) != 0 || order == 0) {
       order = cct->_conf->get_val<int64_t>("rbd_default_order");
@@ -1931,7 +1933,7 @@ bool compare_by_name(const child_info_t& c1, const child_info_t& c2)
       if (throttle.pending_error()) {
         return throttle.wait_for_ret();
       }
-      
+
       {
         RWLock::RLocker snap_locker(src->snap_lock);
         if (src->object_map != nullptr) {
@@ -1949,7 +1951,7 @@ bool compare_by_name(const child_info_t& c1, const child_info_t& c2)
         } else {
           object_id += src->stripe_count;
         }
-      }      
+      }
 
       uint64_t len = min(period, src_size - offset);
       bufferlist *bl = new bufferlist();

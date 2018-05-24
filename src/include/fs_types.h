@@ -82,7 +82,7 @@ void dump(const ceph_dir_layout& l, ceph::Formatter *f);
 
 
 // file_layout_t
-
+// 文件的分片信息
 struct file_layout_t {
   // file -> object mapping
   uint32_t stripe_unit;   ///< stripe unit, in bytes,

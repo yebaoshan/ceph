@@ -28,6 +28,7 @@ class CephContext;
      * map (ino, layout, offset, len) to a (list of) ObjectExtents (byte
      * ranges in objects on (primary) osds)
      */
+    // 完成file到对象strip后的映射
     static void file_to_extents(CephContext *cct, const char *object_format,
 				const file_layout_t *layout,
 				uint64_t offset, uint64_t len,

@@ -83,6 +83,7 @@ librados::RadosClient::RadosClient(CephContext *cct_)
 {
 }
 
+// 查找pool
 int64_t librados::RadosClient::lookup_pool(const char *name)
 {
   int r = wait_for_osdmap();
@@ -247,6 +248,7 @@ int librados::RadosClient::connect()
   state = CONNECTING;
 
   {
+    // ?? 意图
     MonClient mc_bootstrap(cct);
     err = mc_bootstrap.get_monmap_and_config();
     if (err < 0)
@@ -256,11 +258,13 @@ int librados::RadosClient::connect()
   common_init_finish(cct);
 
   // get monmap
+  // 从配置文件获取monmap
   err = monclient.build_initial_monmap();
   if (err < 0)
     goto out;
 
   err = -ENOMEM;
+  // 创建网络通信模块messenger,并设置policy
   messenger = Messenger::create_client_messenger(cct, "radosclient");
   if (!messenger)
     goto out;
@@ -274,6 +278,7 @@ int librados::RadosClient::connect()
 
   ldout(cct, 1) << "starting objecter" << dendl;
 
+  // 创建objecter对象，并初始化
   objecter = new (std::nothrow) Objecter(cct, messenger, &monclient,
 			  &finisher,
 			  cct->_conf->rados_mon_op_timeout,
@@ -296,6 +301,7 @@ int librados::RadosClient::connect()
   monclient.set_want_keys(
       CEPH_ENTITY_TYPE_MON | CEPH_ENTITY_TYPE_OSD | CEPH_ENTITY_TYPE_MGR);
   ldout(cct, 1) << "calling monclient init" << dendl;
+  // 初始化monclient
   err = monclient.init();
   if (err) {
     ldout(cct, 0) << conf->name << " initialization error " << cpp_strerror(-err) << dendl;
@@ -327,6 +333,7 @@ int librados::RadosClient::connect()
   objecter->start();
   lock.Lock();
 
+  // 定时器与回调初始化
   timer.init();
 
   finisher.start();
@@ -473,6 +480,7 @@ librados::RadosClient::~RadosClient()
   cct = NULL;
 }
 
+// 创建一个pool相关的上下文信息IoCtxImpl对象
 int librados::RadosClient::create_ioctx(const char *name, IoCtxImpl **io)
 {
   int64_t poolid = lookup_pool(name);
@@ -610,6 +618,7 @@ int librados::RadosClient::wait_for_latest_osdmap()
   return 0;
 }
 
+// 列出所有pool
 int librados::RadosClient::pool_list(std::list<std::pair<int64_t, string> >& v)
 {
   int r = wait_for_osdmap();
@@ -623,6 +632,7 @@ int librados::RadosClient::pool_list(std::list<std::pair<int64_t, string> >& v)
   return 0;
 }
 
+// 获取pool的统计信息
 int librados::RadosClient::get_pool_stats(std::list<string>& pools,
 					  map<string,::pool_stat_t>& result)
 {
@@ -654,6 +664,7 @@ bool librados::RadosClient::get_pool_is_selfmanaged_snaps_mode(
   return ret;
 }
 
+// 获取系统的统计信息
 int librados::RadosClient::get_fs_stats(ceph_statfs& stats)
 {
   Mutex mylock ("RadosClient::get_fs_stats::mylock");
@@ -685,7 +696,8 @@ bool librados::RadosClient::put() {
   refcnt--;
   return (refcnt == 0);
 }
- 
+
+// 同步创建pool
 int librados::RadosClient::pool_create(string& name, unsigned long long auid,
 				       int16_t crush_rule)
 {
@@ -712,6 +724,7 @@ int librados::RadosClient::pool_create(string& name, unsigned long long auid,
   return reply;
 }
 
+// 异步创建pool
 int librados::RadosClient::pool_create_async(string& name, PoolAsyncCompletionImpl *c,
 					     unsigned long long auid,
 					     int16_t crush_rule)
@@ -751,6 +764,7 @@ int librados::RadosClient::pool_get_base_tier(int64_t pool_id, int64_t* base_tie
   return r;
 }
 
+// 同步删除pool
 int librados::RadosClient::pool_delete(const char *name)
 {
   int r = wait_for_osdmap();
@@ -776,6 +790,7 @@ int librados::RadosClient::pool_delete(const char *name)
   return ret;
 }
 
+// 异步删除pool
 int librados::RadosClient::pool_delete_async(const char *name, PoolAsyncCompletionImpl *c)
 {
   int r = wait_for_osdmap();
@@ -827,6 +842,7 @@ int librados::RadosClient::blacklist_add(const string& client_address,
   return r;
 }
 
+// 处理monitor相关的命令
 int librados::RadosClient::mon_command(const vector<string>& cmd,
 				       const bufferlist &inbl,
 				       bufferlist *outbl, string *outs)
@@ -846,6 +862,7 @@ void librados::RadosClient::mon_command_async(const vector<string>& cmd,
   lock.Unlock();
 }
 
+// 处理mgr相关命令
 int librados::RadosClient::mgr_command(const vector<string>& cmd,
 				       const bufferlist &inbl,
 				       bufferlist *outbl, string *outs)
@@ -903,6 +920,7 @@ int librados::RadosClient::mon_command(string name, const vector<string>& cmd,
   return rval;
 }
 
+// 处理osd相关命令
 int librados::RadosClient::osd_command(int osd, vector<string>& cmd,
 				       const bufferlist& inbl,
 				       bufferlist *poutbl, string *prs)
@@ -928,6 +946,7 @@ int librados::RadosClient::osd_command(int osd, vector<string>& cmd,
   return ret;
 }
 
+// 处理PG相关命令
 int librados::RadosClient::pg_command(pg_t pgid, vector<string>& cmd,
 				      const bufferlist& inbl,
 				      bufferlist *poutbl, string *prs)

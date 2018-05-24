@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -10,9 +10,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 
@@ -55,7 +55,7 @@ class health_check_map_t;
  * marked down.
  *
  * the lost_at is used to allow build_prior to proceed without waiting
- * for an osd to recover.  In certain cases, progress may be blocked 
+ * for an osd to recover.  In certain cases, progress may be blocked
  * because an osd is down that may contain updates (i.e., a pg may have
  * gone rw during an interval).  If the osd can't be brought online, we
  * can force things to proceed knowing that we _might_ be losing some
@@ -70,7 +70,7 @@ struct osd_info_t {
   epoch_t up_thru;   // lower bound on actual osd death (if > up_from)
   epoch_t down_at;   // upper bound on actual osd death (if > up_from)
   epoch_t lost_at;   // last epoch we decided data was "lost"
-  
+
   osd_info_t() : last_clean_begin(0), last_clean_end(0),
 		 up_from(0), up_thru(0), down_at(0), lost_at(0) {}
 
@@ -491,8 +491,9 @@ public:
     }
 
   };
-  
+
 private:
+  // 集群信息
   uuid_d fsid;
   epoch_t epoch;        // what epoch of the osd cluster descriptor is this
   utime_t created, modified; // epoch start time
@@ -500,6 +501,7 @@ private:
 
   uint32_t flags;
 
+  // OSD相关信息
   int num_osd;         // not saved; see calc_num_osds
   int num_up_osd;      // not saved; see calc_num_osds
   int num_in_osd;      // not saved; see calc_num_osds
@@ -518,6 +520,7 @@ private:
 
   mempool::osdmap::vector<__u32>   osd_weight;   // 16.16 fixed point, 0x10000 = "in", 0 = "out"
   mempool::osdmap::vector<osd_info_t> osd_info;
+  // PG相关信息
   ceph::shared_ptr<PGTempMap> pg_temp;  // temp pg mapping (e.g. while we rebuild)
   ceph::shared_ptr< mempool::osdmap::map<pg_t,int32_t > > primary_temp;  // temp primary mapping (e.g. while we rebuild)
   ceph::shared_ptr< mempool::osdmap::vector<__u32> > osd_primary_affinity; ///< 16.16 fixed point, 0x10000 = baseline
@@ -526,6 +529,7 @@ private:
   mempool::osdmap::map<pg_t,mempool::osdmap::vector<int32_t>> pg_upmap; ///< remap pg
   mempool::osdmap::map<pg_t,mempool::osdmap::vector<pair<int32_t,int32_t>>> pg_upmap_items; ///< remap osds in up set
 
+  // pool相关
   mempool::osdmap::map<int64_t,pg_pool_t> pools;
   mempool::osdmap::map<int64_t,string> pool_name;
   mempool::osdmap::map<string,map<string,string> > erasure_code_profiles;
@@ -570,6 +574,7 @@ private:
   bool have_crc() const { return crc_defined; }
   uint32_t get_crc() const { return crc; }
 
+  // crush相关
   ceph::shared_ptr<CrushWrapper> crush;       // hierarchical map
 private:
   uint32_t crush_version = 1;
@@ -577,7 +582,7 @@ private:
   friend class OSDMonitor;
 
  public:
-  OSDMap() : epoch(0), 
+  OSDMap() : epoch(0),
 	     pool_max(0),
 	     flags(0),
 	     num_osd(0), num_up_osd(0), num_in_osd(0),
@@ -857,7 +862,7 @@ public:
    */
   bool subtree_is_down(int id, set<int> *down_cache) const;
   bool containing_subtree_is_down(CephContext *cct, int osd, int subtree_type, set<int> *down_cache) const;
-  
+
   bool subtree_type_is_down(CephContext *cct, int id, int subtree_type, set<int> *down_in_osds, set<int> *up_in_osds,
                             set<int> *subtree_up, unordered_map<int, set<int> > *subtree_type_down) const;
 
@@ -934,7 +939,7 @@ public:
     assert(osd < max_osd);
     return osd_xinfo[osd];
   }
-  
+
   int get_next_up_osd_after(int n) const {
     if (get_max_osd() == 0)
       return -1;
@@ -1309,7 +1314,7 @@ public:
     const vector<int> &oldacting,
     int newprimary,
     const vector<int> &newacting);
-  
+
   /* rank is -1 (stray), 0 (primary), 1,2,3,... (replica) */
   int get_pg_acting_rank(pg_t pg, int osd) const {
     vector<int> group;
@@ -1363,10 +1368,10 @@ public:
   /**
    * Build an OSD map suitable for basic usage. If **num_osd** is >= 0
    * it will be initialized with the specified number of OSDs in a
-   * single host. If **num_osd** is < 0 the layout of the OSD map will 
+   * single host. If **num_osd** is < 0 the layout of the OSD map will
    * be built by reading the content of the configuration file.
    *
-   * @param cct [in] in core ceph context 
+   * @param cct [in] in core ceph context
    * @param e [in] initial epoch
    * @param fsid [in] id of the cluster
    * @param num_osd [in] number of OSDs if >= 0 or read from conf if < 0

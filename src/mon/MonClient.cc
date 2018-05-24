@@ -1,4 +1,4 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*- 
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 /*
  * Ceph - scalable distributed file system
@@ -7,9 +7,9 @@
  *
  * This is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License version 2.1, as published by the Free Software 
+ * License version 2.1, as published by the Free Software
  * Foundation.  See file COPYING.
- * 
+ *
  */
 
 #include <random>
@@ -81,7 +81,7 @@ int MonClient::get_monmap()
 {
   ldout(cct, 10) << __func__ << dendl;
   Mutex::Locker l(monc_lock);
-  
+
   _sub_want("monmap", 0, 0);
   if (!_opened())
     _reopen_session();
@@ -114,6 +114,7 @@ int MonClient::get_monmap_and_config()
   messenger = Messenger::create_client_messenger(
     cct, "temp_mon_client");
   assert(messenger);
+  // ??? add进messenger, 而下面的init也add了this到messenger
   messenger->add_dispatcher_head(this);
   messenger->start();
 
@@ -780,7 +781,7 @@ void MonClient::tick()
     });
 
   _check_auth_tickets();
-  
+
   if (_hunting()) {
     ldout(cct, 1) << "continuing hunt" << dendl;
     return _reopen_session();
@@ -961,7 +962,7 @@ int MonClient::wait_auth_rotating(double timeout)
 
   if (auth->get_protocol() == CEPH_AUTH_NONE)
     return 0;
-  
+
   if (!rotating_secrets)
     return 0;
 
