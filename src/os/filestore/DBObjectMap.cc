@@ -515,11 +515,14 @@ int DBObjectMap::DBObjectMapIteratorImpl::status()
   return r;
 }
 
+// 设置对象的属性
 int DBObjectMap::set_keys(const ghobject_t &oid,
 			  const map<string, bufferlist> &set,
 			  const SequencerPosition *spos)
 {
+  // 获取一个事务
   KeyValueDB::Transaction t = db->get_transaction();
+  // 获取header
   MapHeaderLock hl(this, oid);
   Header header = lookup_create_map_header(hl, oid, t);
   if (!header)
@@ -527,8 +530,10 @@ int DBObjectMap::set_keys(const ghobject_t &oid,
   if (check_spos(oid, header, spos))
     return 0;
 
+  // 设置属性
   t->set(user_prefix(header), set);
 
+  // 提交事务
   return db->submit_transaction(t);
 }
 
@@ -804,14 +809,17 @@ int DBObjectMap::check_keys(const ghobject_t &oid,
   return scan(header, keys, out, 0);
 }
 
+// 获取对象的属性
 int DBObjectMap::get_xattrs(const ghobject_t &oid,
 			    const set<string> &to_get,
 			    map<string, bufferlist> *out)
 {
   MapHeaderLock hl(this, oid);
+  // 获取对应的header头部
   Header header = lookup_map_header(hl, oid);
   if (!header)
     return -ENOENT;
+  // 有header获取具体的数据
   return db->get(xattr_prefix(header), to_get, out);
 }
 
@@ -1155,6 +1163,7 @@ DBObjectMap::Header DBObjectMap::_lookup_map_header(
   _Header *header = new _Header();
   {
     Mutex::Locker l(cache_lock);
+    // 在caches是否缓存
     if (caches.lookup(oid, header)) {
       assert(!in_use.count(header->seq));
       in_use.insert(header->seq);
@@ -1162,6 +1171,7 @@ DBObjectMap::Header DBObjectMap::_lookup_map_header(
     }
   }
 
+  // 从底层KeyValueDB查找header
   bufferlist out;
   int r = db->get(HOBJECT_TO_SEQ, map_header_key(oid), &out);
   if (r < 0 || out.length()==0) {
@@ -1174,6 +1184,7 @@ DBObjectMap::Header DBObjectMap::_lookup_map_header(
 
   ret->decode(iter);
   {
+    //插入caches
     Mutex::Locker l(cache_lock);
     caches.add(oid, *ret);
   }
@@ -1232,6 +1243,7 @@ DBObjectMap::Header DBObjectMap::lookup_parent(Header input)
   return header;
 }
 
+// 获取对象的header
 DBObjectMap::Header DBObjectMap::lookup_create_map_header(
   const MapHeaderLock &hl,
   const ghobject_t &oid,
@@ -1240,7 +1252,9 @@ DBObjectMap::Header DBObjectMap::lookup_create_map_header(
   Mutex::Locker l(header_lock);
   Header header = _lookup_map_header(hl, oid);
   if (!header) {
+    // 构建设置Header的字段
     header = _generate_new_header(oid, Header());
+    // 新Header设置到LevelDB中
     set_map_header(hl, oid, *header, t);
   }
   return header;
@@ -1369,7 +1383,7 @@ int DBObjectMap::list_object_headers(vector<_Header> *out)
 
 ostream& operator<<(ostream& out, const DBObjectMap::_Header& h)
 {
-  out << "seq=" << h.seq << " parent=" << h.parent 
+  out << "seq=" << h.seq << " parent=" << h.parent
       << " num_children=" << h.num_children
       << " ghobject=" << h.oid;
   return out;

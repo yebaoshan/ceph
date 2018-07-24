@@ -54,14 +54,14 @@ protected:
     Finisher &finisher;
 
     Mutex apply_lock;
-    bool blocked;
+    bool blocked; // 日志应用是否阻塞，当前日志同步时需要
     Cond blocked_cond;
-    int open_ops;
-    uint64_t max_applied_seq;
+    int open_ops; // 正在进行日志apply的ops的数量
+    uint64_t max_applied_seq; // 日志应用完成的最大的seq
 
     Mutex com_lock;
-    map<version_t, vector<Context*> > commit_waiters;
-    uint64_t committing_seq, committed_seq;
+    map<version_t, vector<Context*> > commit_waiters; // 日志完成同步后的回调函数，用于没有日志的类型
+    uint64_t committing_seq, committed_seq; // 已经同步完成的seq
 
   public:
     ApplyManager(CephContext* cct, Journal *&j, Finisher &f) :

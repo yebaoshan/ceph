@@ -1,7 +1,7 @@
 // -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
 // vim: ts=8 sw=2 smarttab
 
-#include "boost/algorithm/string.hpp" 
+#include "boost/algorithm/string.hpp"
 #include "BlueFS.h"
 
 #include "common/debug.h"
@@ -580,7 +580,7 @@ int BlueFS::_replay(bool noop, bool to_stdout)
   dout(10) << __func__ << " log_fnode " << super.log_fnode << dendl;
   if (unlikely(to_stdout)) {
     std::cout << " log_fnode " << super.log_fnode << std::endl;
-  } 
+  }
 
   FileReader *log_reader = new FileReader(
     log_file, cct->_conf->bluefs_max_prefetch,
@@ -820,13 +820,13 @@ int BlueFS::_replay(bool noop, bool to_stdout)
                       << ":  op_dir_unlink " << " " << dirname << "/" << filename
                       << std::endl;
           }
- 
+
 	  if (!noop) {
 	    map<string,DirRef>::iterator q = dir_map.find(dirname);
 	    assert(q != dir_map.end());
 	    map<string,FileRef>::iterator r = q->second->file_map.find(filename);
 	    assert(r != q->second->file_map.end());
-            assert(r->second->refs > 0); 
+            assert(r->second->refs > 0);
 	    --r->second->refs;
 	    q->second->file_map.erase(r);
 	  }
@@ -1972,16 +1972,16 @@ int BlueFS::_allocate(uint8_t id, uint64_t len,
   int r = -ENOSPC;
   int64_t alloc_len = 0;
   PExtentVector extents;
-  
+
   if (alloc[id]) {
     r = alloc[id]->reserve(left);
   }
-  
+
   if (r == 0) {
     uint64_t hint = 0;
     if (!node->extents.empty() && node->extents.back().bdev == id) {
       hint = node->extents.back().end();
-    }   
+    }
     extents.reserve(4);  // 4 should be (more than) enough for most allocations
     alloc_len = alloc[id]->allocate(left, min_alloc_size, hint, &extents);
   }
@@ -2011,15 +2011,15 @@ int BlueFS::_allocate(uint8_t id, uint64_t len,
     else
       derr << __func__ << " failed to allocate 0x" << std::hex << left
 	   << " on bdev " << (int)id << ", dne" << std::dec << dendl;
-    if (alloc[id]) 
-      alloc[id]->dump();    
+    if (alloc[id])
+      alloc[id]->dump();
     return -ENOSPC;
   }
 
   for (auto& p : extents) {
     node->append_extent(bluefs_extent_t(id, p.offset, p.length));
   }
-   
+
   return 0;
 }
 

@@ -594,10 +594,10 @@ ostream& operator<<(ostream& out, const spg_t &pg);
 
 class coll_t {
   enum type_t {
-    TYPE_META = 0,
+    TYPE_META = 0, // 元数据
     TYPE_LEGACY_TEMP = 1,  /* no longer used */
-    TYPE_PG = 2,
-    TYPE_PG_TEMP = 3,
+    TYPE_PG = 2, // PG相关的数据
+    TYPE_PG_TEMP = 3, // 临时对象
   };
   type_t type;
   spg_t pgid;

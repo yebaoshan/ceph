@@ -45,6 +45,7 @@ class FileJournal :
   public md_config_obs_t {
 public:
   /// Protected by finisher_lock
+  // 准备提交的item
   struct completion_item {
     uint64_t seq;
     Context *finish;
@@ -54,9 +55,11 @@ public:
       : seq(o), finish(c), start(s), tracked_op(opref) {}
     completion_item() : seq(0), finish(0), start(0) {}
   };
+
+  // 封装一条提交的日志
   struct write_item {
     uint64_t seq;
-    bufferlist bl;
+    bufferlist bl; // 日志数据
     uint32_t orig_len;
     TrackedOpRef tracked_op;
     ZTracer::Trace trace;
@@ -69,7 +72,7 @@ public:
 
   Mutex finisher_lock;
   Cond finisher_cond;
-  uint64_t journaled_seq;
+  uint64_t journaled_seq; // 已经提交成功的日志的最大seq
   bool plug_journal_completions;
 
   Mutex writeq_lock;
@@ -128,7 +131,7 @@ public:
     __u32 alignment;
     int64_t max_size;   // max size of journal ring buffer
     int64_t start;      // offset of first entry
-    uint64_t committed_up_to; // committed up to
+    uint64_t committed_up_to; // committed up to // 已经提交的日志的seq, 等同于journaled_seq
 
     /**
      * start_seq
@@ -144,7 +147,7 @@ public:
      * if start_seq > committed_up_to because the entry would have
      * a sequence >= start_seq and therefore > committed_up_to.
      */
-    uint64_t start_seq;
+    uint64_t start_seq; // 等同于日志的起始，last_commited_seq+1
 
     header_t() :
       flags(0), block_size(0), alignment(0), max_size(0), start(0),

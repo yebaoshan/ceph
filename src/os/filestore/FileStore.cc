@@ -2108,7 +2108,7 @@ FileStore::Op *FileStore::build_op(vector<Transaction>& tls,
 }
 
 
-
+// 把操作添加 到FileStore内部的线程池对应的队列中opWq
 void FileStore::queue_op(OpSequencer *osr, Op *o)
 {
   // queue op on sequencer, then queue sequencer for the threadpool,
@@ -2146,6 +2146,7 @@ void FileStore::op_queue_release_throttle(Op *o)
   logger->set(l_filestore_op_queue_bytes, throttle_bytes.get_current());
 }
 
+// 日志的应用
 void FileStore::_do_op(OpSequencer *osr, ThreadPool::TPHandle &handle)
 {
   if (!m_disable_wbthrottle) {
@@ -2166,6 +2167,7 @@ void FileStore::_do_op(OpSequencer *osr, ThreadPool::TPHandle &handle)
   apply_manager.op_apply_start(o->op);
   dout(5) << __FUNC__ << ": " << o << " seq " << o->op << " " << *osr << " start" << dendl;
   o->trace.event("_do_transactions start");
+  // 解析事务，执行相应的操作
   int r = _do_transactions(o->tls, o->op, &handle, osr->osr_name);
   o->trace.event("op_apply_finish");
   apply_manager.op_apply_finish(o->op);
@@ -2225,6 +2227,7 @@ int FileStore::queue_transactions(CollectionHandle& ch, vector<Transaction>& tls
   Context *onreadable;
   Context *ondisk;
   Context *onreadable_sync;
+  // 收集回调函数
   ObjectStore::Transaction::collect_contexts(
     tls, &onreadable, &ondisk, &onreadable_sync);
 
@@ -2252,8 +2255,10 @@ int FileStore::queue_transactions(CollectionHandle& ch, vector<Transaction>& tls
   }
 
   if (journal && journal->is_writeable() && !m_filestore_journal_trailing) {
+    // 构建op对象
     Op *o = build_op(tls, onreadable, onreadable_sync, osd_op);
 
+    // 把所有日志的数据封装到tbl里
     //prepare and encode transactions data out of lock
     bufferlist tbl;
     int orig_len = journal->prepare_entry(o->tls, &tbl);
@@ -2267,6 +2272,7 @@ int FileStore::queue_transactions(CollectionHandle& ch, vector<Transaction>& tls
     if (handle)
       handle->reset_tp_timeout();
 
+    // 分配一个日志的序号，设置在op结构里
     uint64_t op_num = submit_manager.op_submit_start();
     o->op = op_num;
     trace.keyval("opnum", op_num);
@@ -2274,29 +2280,35 @@ int FileStore::queue_transactions(CollectionHandle& ch, vector<Transaction>& tls
     if (m_filestore_do_dump)
       dump_transactions(o->tls, o->op, osr);
 
+    // parallel模式
     if (m_filestore_journal_parallel) {
       dout(5) << __FUNC__ << ": (parallel) " << o->op << " " << o->tls << dendl;
 
       trace.keyval("journal mode", "parallel");
       trace.event("journal started");
+      // 开始提交日志
       _op_journal_transactions(tbl, orig_len, o->op, ondisk, osd_op);
 
+      // 把请求添加到op_wq,同时开始日志的应用
       // queue inside submit_manager op submission lock
       queue_op(osr, o);
       trace.event("op queued");
     } else if (m_filestore_journal_writeahead) {
       dout(5) << __FUNC__ << ": (writeahead) " << o->op << " " << o->tls << dendl;
 
+      // 把op添加到osr中
       osr->queue_journal(o);
 
       trace.keyval("journal mode", "writeahead");
       trace.event("journal started");
+      // 提交日志; 在回调函数C_JournaledAhead里,其finish函数调用_journaled_ahead,该函数在调用queue_op把请求加入的op_wq队列中
       _op_journal_transactions(tbl, orig_len, o->op,
 			       new C_JournaledAhead(this, osr, o, ondisk),
 			       osd_op);
     } else {
       ceph_abort();
     }
+    // 通知submit_manager日志提交完成
     submit_manager.op_submit_finish(op_num);
     utime_t end = ceph_clock_now();
     logger->tinc(l_filestore_queue_transaction_latency_avg, end - start);
@@ -3612,7 +3624,7 @@ int FileStore::_write(const coll_t& cid, const ghobject_t& oid,
     int rc = backend->_crc_update_write(**fd, offset, len, bl);
     assert(rc >= 0);
   }
- 
+
   if (replaying || m_disable_wbthrottle) {
     if (fadvise_flags & CEPH_OSD_OP_FLAG_FADVISE_DONTNEED) {
 #ifdef HAVE_POSIX_FADVISE
@@ -3623,7 +3635,7 @@ int FileStore::_write(const coll_t& cid, const ghobject_t& oid,
     wbthrottle.queue_wb(fd, oid, offset, len,
         fadvise_flags & CEPH_OSD_OP_FLAG_FADVISE_DONTNEED);
   }
- 
+
   lfn_close(fd);
 
  out:
@@ -3812,7 +3824,7 @@ int FileStore::_do_sparse_copy_range(int from, int to, uint64_t srcoff, uint64_t
     r = _do_fiemap(from, srcoff, len, &exomap);
   }
 
- 
+
  int64_t written = 0;
  if (r < 0)
     goto out;
@@ -4041,6 +4053,7 @@ private:
   int m_commit_timeo;
 };
 
+// 定期执行同步操作
 void FileStore::sync_entry()
 {
   lock.Lock();
@@ -4083,6 +4096,7 @@ void FileStore::sync_entry()
     fin.swap(sync_waiters);
     lock.Unlock();
 
+    // 暂停FileStore的op_wq的线程池，等待正在应用的日志完成
     op_tp.pause();
     if (apply_manager.commit_start()) {
       utime_t start = ceph_clock_now();
@@ -6079,7 +6093,7 @@ uint64_t FileStore::estimate_objects_overhead(uint64_t num_objects)
 
 int FileStore::apply_layout_settings(const coll_t &cid, int target_level)
 {
-  dout(20) << __FUNC__ << ": " << cid << " target level: " 
+  dout(20) << __FUNC__ << ": " << cid << " target level: "
            << target_level << dendl;
   Index index;
   int r = get_index(cid, &index);

@@ -26,6 +26,7 @@
 /**
   CollectionIndex provides an interface for manipulating indexed collections
  */
+// 对象在文件系统中多层目录存储的接口
 class CollectionIndex {
 public:
   CephContext* cct;

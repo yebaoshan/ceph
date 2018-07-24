@@ -396,9 +396,9 @@ void BitMapZone::free_blocks_int(int64_t start_block, int64_t num_blocks)
   int64_t falling_in_bmap = 0;
   int64_t count = num_blocks;
   int64_t first_blk = start_block;
-  
+
   if (num_blocks == 0) {
-    return; 
+    return;
   }
   alloc_dbg_assert(is_allocated(start_block, num_blocks));
 
@@ -442,10 +442,15 @@ void BitMapZone::free_blocks(int64_t start_block, int64_t num_blocks)
   alloc_assert(get_used_blocks() >= 0);
 }
 
+// zone_blk_off为当前zone的偏移，其之前的块数
+// hint 为从当前zone内的偏移hint个块开始
+// min_alloc 每次申请需要申请的最小连续块数
+// num_blocks为需要申请的块数
+// 返回申请成功的块数
 int64_t BitMapZone::alloc_blocks_dis(int64_t num_blocks,
            int64_t min_alloc,
      int64_t hint,
-     int64_t zone_blk_off, 
+     int64_t zone_blk_off,
      AllocatorExtentList *alloc_blocks)
 {
   int64_t bmap_idx = hint / BmapEntry::size();
@@ -459,7 +464,7 @@ int64_t BitMapZone::alloc_blocks_dis(int64_t num_blocks,
   int search_idx = bit;
   int64_t scanned = 0;
   int start_off = 0;
-  
+
 
   alloc_assert(check_locked());
 
@@ -472,6 +477,7 @@ int64_t BitMapZone::alloc_blocks_dis(int64_t num_blocks,
 
   while (allocated < num_blocks) {
     blk_off = zone_blk_off + bmap_idx * bmap->size();
+    // 上一个bitmap中最后一次获取的块数小于min_alloc
     if (last_cont) {
       /*
        * We had bits free at end of last bitmap, try to complete required
@@ -480,7 +486,8 @@ int64_t BitMapZone::alloc_blocks_dis(int64_t num_blocks,
       alloc_cont = bmap->find_n_cont_bits(0, min_alloc - last_cont);
       allocated += alloc_cont;
       last_cont += alloc_cont;
-      
+
+      // ??? 应该改为if (last_cont / min_alloc == 0)
       if (!alloc_cont) {
         if (last_cont) {
           this->free_blocks_int(last_running_ext - zone_blk_off, last_cont);
@@ -509,7 +516,7 @@ int64_t BitMapZone::alloc_blocks_dis(int64_t num_blocks,
          */
         alloc_blocks->add_extents(blk_off + start_off, min_alloc);
       }
-      
+
       if (alloc_cont % min_alloc) {
         /*
          * Got some bits at end of bitmap, carry them to try match with
@@ -517,15 +524,16 @@ int64_t BitMapZone::alloc_blocks_dis(int64_t num_blocks,
          */
         if (!last_cont) {
           last_running_ext = blk_off + start_off;
-        } 
+        }
         last_cont += alloc_cont % min_alloc;
       }
     }
-  
-   
+
+
     if (search_idx == BmapEntry::size()) {
       search_idx = 0;
       bmap_idx = iter.index();
+      // 到达zone中最后一块,若最后一次获取只有没达到最小可申请块数，则置位最后一次获取的块
       if ((bmap = iter.next()) == NULL) {
         if (last_cont) {
           this->free_blocks_int(last_running_ext - zone_blk_off, last_cont);
@@ -638,8 +646,11 @@ void BitMapAreaIN::init(CephContext* const cct,
   alloc_assert(!(total_blocks % BmapEntry::size()));
 
   init_common(cct, total_blocks, area_idx, def);
+
+  // 当前level下的子单元大小，所占块数
   int64_t level_factor = BitMapArea::get_level_factor(cct, m_level);
 
+  // 当前区域所包含的子单元个数
   num_child = (total_blocks + level_factor - 1) / level_factor;
   alloc_assert(num_child < std::numeric_limits<int16_t>::max());
 
@@ -649,6 +660,7 @@ void BitMapAreaIN::init(CephContext* const cct,
   children.reserve(num_child);
   int i = 0;
   for (i = 0; i < num_child - 1; i++) {
+    // ??? 为什么是2 不是1 ??? 因为第2层的子节点应该是leaf，第一次是leaf，其之节点是zone, m_level在此处不可能等于1
     if (m_level <= 2) {
       children.push_back(new BitMapAreaLeaf(cct, m_child_size_blocks, i, def));
     } else {
@@ -773,7 +785,7 @@ void BitMapAreaIN::unreserve(int64_t needed, int64_t allocated)
 }
 int64_t BitMapAreaIN::get_reserved_blocks()
 {
-  std::lock_guard<std::mutex> l(m_blocks_lock); 
+  std::lock_guard<std::mutex> l(m_blocks_lock);
   return m_reserved_blocks;
 }
 
@@ -806,7 +818,8 @@ bool BitMapAreaIN::is_allocated(int64_t start_block, int64_t num_blocks)
   return true;
 }
 
-int64_t BitMapAreaIN::alloc_blocks_dis_int_work(bool wrap, int64_t num_blocks, int64_t min_alloc, 
+// wrap 是否循环查找子节点; 最外层应该为true，其他为false
+int64_t BitMapAreaIN::alloc_blocks_dis_int_work(bool wrap, int64_t num_blocks, int64_t min_alloc,
            int64_t hint, int64_t area_blk_off, AllocatorExtentList *block_list)
 {
   BitMapArea *child = NULL;
@@ -817,6 +830,7 @@ int64_t BitMapAreaIN::alloc_blocks_dis_int_work(bool wrap, int64_t num_blocks, i
         &m_child_list, hint / m_child_size_blocks, wrap);
 
   while ((child = static_cast<BitMapArea *>(iter.next()))) {
+    // 检查是否至少有一个块
     if (!child_check_n_lock(child, 1)) {
       hint = 0;
       continue;
@@ -842,6 +856,10 @@ int64_t BitMapAreaIN::alloc_blocks_dis_int(int64_t num_blocks, int64_t min_alloc
                      area_blk_off, block_list);
 }
 
+// blk_off为当前span的偏移，其之前的块数
+// hint 为从当前span内的偏移hint个块开始
+// min_alloc 每次申请需要申请的最小连续块数
+// num_blocks为需要申请的块数
 int64_t BitMapAreaIN::alloc_blocks_dis(int64_t num_blocks, int64_t min_alloc,
            int64_t hint, int64_t blk_off, AllocatorExtentList *block_list)
 {
@@ -1030,7 +1048,7 @@ inline bool BitMapAreaLeaf::child_check_n_lock(BitMapZone* const child,
   return true;
 }
 
-int64_t BitMapAreaLeaf::alloc_blocks_dis_int(int64_t num_blocks, int64_t min_alloc, 
+int64_t BitMapAreaLeaf::alloc_blocks_dis_int(int64_t num_blocks, int64_t min_alloc,
                                  int64_t hint, int64_t area_blk_off, AllocatorExtentList *block_list)
 {
   BitMapZone* child = nullptr;
@@ -1335,6 +1353,7 @@ int64_t BitAllocator::alloc_blocks_dis_res(int64_t num_blocks, int64_t min_alloc
   return alloc_blocks_dis_work(num_blocks, min_alloc, hint, block_list, true);
 }
 
+// reserved:是否已经预约了相应的块数，上层在可用块数和预留块数上已加过
 int64_t BitAllocator::alloc_blocks_dis_work(int64_t num_blocks, int64_t min_alloc,
                                             int64_t hint, AllocatorExtentList *block_list, bool reserved)
 {
@@ -1435,7 +1454,7 @@ void BitAllocator::free_blocks_dis(int64_t num_blocks, AllocatorExtentList *bloc
 void BitAllocator::dump()
 {
   int count = 0;
-  serial_lock(); 
+  serial_lock();
   dump_state(cct, count);
-  serial_unlock(); 
+  serial_unlock();
 }

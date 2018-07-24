@@ -211,20 +211,22 @@ private:
 
   // -- op workqueue --
   struct Op {
-    utime_t start;
-    uint64_t op;
-    vector<Transaction> tls;
+    utime_t start; // 日志应用的开始时间
+    uint64_t op; // 日志的seq
+    vector<Transaction> tls; // 事务列表
     Context *onreadable, *onreadable_sync;
-    uint64_t ops, bytes;
+    uint64_t ops, bytes; // 操作数目和字节数
     TrackedOpRef osd_op;
     ZTracer::Trace trace;
     bool registered_apply = false;
   };
+
+  // 实现请求的顺序执行,包括日志的commit和apply顺序;一般一个PG对应一个Sequencer
   class OpSequencer : public CollectionImpl {
     CephContext *cct;
     Mutex qlock; // to protect q, for benefit of flush (peek/dequeue also protected by lock)
-    list<Op*> q;
-    list<uint64_t> jq;
+    list<Op*> q;       // 操作系列
+    list<uint64_t> jq; // 日志序号
     list<pair<uint64_t, Context*> > flush_commit_waiters;
     Cond cond;
     string osr_name_str;
@@ -647,7 +649,7 @@ public:
     fsid = u;
   }
   uuid_d get_fsid() override { return fsid; }
-  
+
   uint64_t estimate_objects_overhead(uint64_t num_objects) override;
 
   // DEBUG read error injection, an object is removed from both on delete()

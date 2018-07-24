@@ -123,6 +123,7 @@ int JournalingObjectStore::journal_replay(uint64_t fs_op_seq)
 uint64_t JournalingObjectStore::ApplyManager::op_apply_start(uint64_t op)
 {
   Mutex::Locker l(apply_lock);
+  // 阻塞，就暂停日志的应用
   while (blocked) {
     dout(10) << "op_apply_start blocked, waiting" << dendl;
     blocked_cond.Wait(apply_lock);
@@ -131,6 +132,7 @@ uint64_t JournalingObjectStore::ApplyManager::op_apply_start(uint64_t op)
 	   << (open_ops+1) << dendl;
   assert(!blocked);
   assert(op > committed_seq);
+  // 统计值加1
   open_ops++;
   return op;
 }
@@ -141,12 +143,13 @@ void JournalingObjectStore::ApplyManager::op_apply_finish(uint64_t op)
   dout(10) << "op_apply_finish " << op << " open_ops " << open_ops << " -> "
 	   << (open_ops-1) << ", max_applied_seq " << max_applied_seq << " -> "
 	   << std::max(op, max_applied_seq) << dendl;
+  // 统计值减1
   --open_ops;
   assert(open_ops >= 0);
 
   // signal a blocked commit_start
   if (blocked) {
-    blocked_cond.Signal();
+    blocked_cond.Signal(); // 触发阻塞信号
   }
 
   // there can be multiple applies in flight; track the max value we
@@ -186,6 +189,7 @@ void JournalingObjectStore::ApplyManager::add_waiter(uint64_t op, Context *c)
   commit_waiters[op].push_back(c);
 }
 
+// 日志同步时计算目前完成的最大的日志seq
 bool JournalingObjectStore::ApplyManager::commit_start()
 {
   bool ret = false;
@@ -225,6 +229,7 @@ bool JournalingObjectStore::ApplyManager::commit_start()
   return ret;
 }
 
+//  表示日志开始同步
 void JournalingObjectStore::ApplyManager::commit_started()
 {
   Mutex::Locker l(apply_lock);
@@ -235,6 +240,7 @@ void JournalingObjectStore::ApplyManager::commit_started()
   blocked_cond.Signal();
 }
 
+// 日志同步结束时调用
 void JournalingObjectStore::ApplyManager::commit_finish()
 {
   Mutex::Locker l(com_lock);
@@ -263,6 +269,7 @@ void JournalingObjectStore::_op_journal_transactions(
   else
     dout(10) << "op_journal_transactions " << op  << dendl;
 
+  // 有日志，并可写，调用sumit_entry提交日志；提交成功后，会调用回调函数onjornal
   if (journal && journal->is_writeable()) {
     journal->submit_entry(op, tbl, orig_len, onjournal, osd_op);
   } else if (onjournal) {

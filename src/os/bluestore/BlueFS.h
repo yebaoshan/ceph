@@ -220,7 +220,7 @@ private:
 
   PerfCounters *logger = nullptr;
 
-  // cache
+  // cache // 元数据缓存
   mempool::bluefs::map<string, DirRef> dir_map;              ///< dirname -> Dir
   mempool::bluefs::unordered_map<uint64_t,FileRef> file_map; ///< ino -> File
 
@@ -335,7 +335,7 @@ public:
   int mkfs(uuid_d osd_uuid);
   int mount();
   void umount();
-  
+
   int log_dump(
     CephContext *cct,
     const string& path,
